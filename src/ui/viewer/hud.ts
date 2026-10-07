@@ -8,7 +8,7 @@ import { clear, h } from '../dom';
 import { fmtClock } from '../format';
 import { CATALOG_HREF } from '../router';
 import type { Store } from '../store';
-import { DENSITIES, nextPhase, prevPhase, SPEEDS, tickLabels, type PhaseMark, type Speed, type ViewerState } from './model';
+import { DENSITIES, knownSide, nextPhase, prevPhase, SPEEDS, tickLabels, type PhaseMark, type Speed, type ViewerState } from './model';
 import { ForcesPanel, InspectorPanel, LogPanel } from './panels';
 
 export interface HudDeps {
@@ -304,8 +304,8 @@ export function buildHud(d: HudDeps): Hud {
       right.classList.toggle('open', s.drawer === 'log');
       setAttr(forcesToggle, 'aria-expanded', String(s.drawer === 'forces'));
       setAttr(logToggle, 'aria-expanded', String(s.drawer === 'log'));
-      forces.render(live.frame);
-      log.render(live.frame.t, s.logSide);
+      forces.render(live.frame, knownSide(s));
+      log.render(live.frame.t, s.logSide, knownSide(s));
       inspector.render(s.selectedShip, live.frame.t);
     },
     dispose() {

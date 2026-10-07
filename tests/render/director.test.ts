@@ -37,8 +37,10 @@ describe('director', () => {
   });
 
   it("frames the commander's own fleet in the perceived picture, never an enemy's true position", () => {
-    expect(perceivedSubject(shots[0], 'tf-blue').subject).toEqual(['tf-blue']);
-    expect(perceivedSubject(shots[0], null)).toBe(shots[0]);
+    expect(perceivedSubject(shots[0], 'tf-blue', true)?.subject).toEqual(['tf-blue']);
+    expect(perceivedSubject(shots[0], null, false)).toBe(shots[0]);
+    // No observer in the theater: hold the camera rather than aim it at true enemy positions.
+    expect(perceivedSubject(shots[0], null, true)).toBeNull();
   });
 
   it('eases toward a pose, and snaps on a cut', () => {

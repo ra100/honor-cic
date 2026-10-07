@@ -3,7 +3,7 @@ import { createFrame, sampleFrame, ShipStatus } from '../../src/core/replay';
 import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
 import {
-  advance, autoSpeed, eventIndex, forcesModel, initialState, inspectorModel, logModel, nextPhase, phaseMarks, prevPhase, sourceText, tickLabels,
+  advance, autoSpeed, eventIndex, forcesModel, initialState, inspectorModel, logModel, nextPhase, phaseMarks, prevPhase, sourceText, tickLabels, knownSide, perceivedSelection,
 } from '../../src/ui/viewer/model';
 import { getPack } from '../../src/registry';
 
@@ -74,6 +74,22 @@ describe('viewer model', () => {
     expect(blue.length).toBeLessThanOrEqual(all.length);
     expect(blue.every((l) => l.side === 'alliance' || l.side === null)).toBe(true);
     expect(logModel(replay, replay.duration_s, 'all', 2).length).toBeLessThanOrEqual(2);
+  });
+
+  it('in the perceived picture shows only the commander\'s own forces, log and selection (Review Focus 5)', () => {
+    const s = { ...initialState(pack, false), perceived: { enabled: true, side: 'alliance' } };
+    expect(knownSide(s)).toBe('alliance');
+    expect(knownSide({ ...s, perceived: { enabled: false, side: 'alliance' } })).toBeNull();
+    const frame = sampleFrame(replay, replay.duration_s, createFrame(replay));
+    expect(forcesModel(replay, frame, 'alliance').map((x) => x.id)).toEqual(['alliance']);
+    const rows = logModel(replay, replay.duration_s, 'all', 1000, 'alliance');
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => r.side === 'alliance')).toBe(true);
+    const enemy = replay.ships.findIndex((x) => x.side === 'haven');
+    const own = replay.ships.findIndex((x) => x.side === 'alliance');
+    expect(perceivedSelection(replay, { ...s, selectedShip: enemy })).toBeNull();
+    expect(perceivedSelection(replay, { ...s, selectedShip: own })).toBe(own);
+    expect(perceivedSelection(replay, { ...s, perceived: { enabled: false, side: 'alliance' }, selectedShip: enemy })).toBe(enemy);
   });
 
   it('never reports a destroyed ship as operational in the forces table', () => {
