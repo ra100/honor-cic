@@ -33,6 +33,11 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
   return shots;
 }
 
+/** In the perceived picture the camera follows the observer's own fleet, so framing never reveals where an enemy really is. */
+export function perceivedSubject(shot: DirectorShot, observerId: string | null): DirectorShot {
+  return observerId ? { ...shot, subject: [observerId] } : shot;
+}
+
 /** The shot running at t; before the first shot starts, the first shot. */
 export function shotAt(shots: DirectorShot[], t: number): DirectorShot | null {
   let found: DirectorShot | null = shots[0] ?? null;

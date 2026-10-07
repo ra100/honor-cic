@@ -28,6 +28,13 @@ describe('commander picture (MTS §7, Review Focus 5)', () => {
     expect(gap).toBeGreaterThan(100);
   });
 
+  it("includes the observer's own fleet as a zero-age contact, so the plot is centred on what the commander knows", () => {
+    const pic = commanderPicture(replay, tracks, 'alliance', 'range', 120, ftl);
+    const own = pic.contacts.find((c) => c.id === 'tf-blue');
+    expect(own).toBeDefined();
+    expect(own!.age).toBeCloseTo(0, 6);
+  });
+
   it('shows nothing when the side has no unit in the theater', () => {
     const pic = commanderPicture(replay, tracks, 'nobody', 'range', 10, ftl);
     expect(pic.observer).toBeNull();

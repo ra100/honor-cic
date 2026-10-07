@@ -75,6 +75,10 @@ export class ShipView implements ScaleView {
     return this.podsMoved;
   }
 
+  wedgeVisible(): boolean {
+    return this.bands.length > 0 && this.bands.every((b) => b.visible) && !!this.walls?.stbd.visible && !!this.walls?.port.visible;
+  }
+
   shotsFiring(): number {
     return this.firing;
   }
@@ -91,7 +95,8 @@ export class ShipView implements ScaleView {
     const cls = ctx.tech.classes[id];
     if (cls && id !== this.classId) this.build(cls);
     const sub = ship && ship.classId === this.classId ? subsystemsAt(ship, ctx.frame.t) : null;
-    const protection = ctx.layers.protection;
+    // The wedge is the subject of the class view, so it ignores the global protection layer; only damage removes it.
+    const protection = true;
     for (const b of this.bands) b.visible = protection && (!sub || sub.drive_fore > 0 || sub.drive_aft > 0);
     if (this.walls) {
       this.walls.stbd.visible = protection && (!sub || sub.wall_stbd > 0);
@@ -105,7 +110,7 @@ export class ShipView implements ScaleView {
     const at = (v: THREE.Vector3) => v.clone().applyMatrix4(this.rig.matrixWorld);
     const specs: LabelSpec[] = this.anchors.map((a) => ({ key: a.key, cls: a.cls, text: a.text, sub: a.sub, pos: at(a.local) }));
     if (ship) {
-      specs.push({ key: 'ship', cls: 'title ship', text: ship.name, sub: STATUS_TEXT[shipStatusAt(this.replay, ship, ctx.frame.t)], pos: at(new THREE.Vector3(0, 0, toU(this.dims[2]) * 4)) });
+      specs.push({ key: 'ship', cls: 'title ship', text: ship.name, sub: STATUS_TEXT[shipStatusAt(this.replay, ship, ctx.frame.t)], pos: at(new THREE.Vector3(0, 0, 0)) });
     }
     if (sub && sub.wall_stbd === 0) specs.push({ key: 'dmg-stbd', cls: 'damage', text: 'Starboard sidewall down', pos: at(new THREE.Vector3(0, -this.sidewallU, 0)) });
     if (sub && sub.wall_port === 0) specs.push({ key: 'dmg-port', cls: 'damage', text: 'Port sidewall down', pos: at(new THREE.Vector3(0, this.sidewallU, 0)) });
@@ -184,15 +189,15 @@ export class ShipView implements ScaleView {
     this.podCount = cls.pod_eject_count.value ?? 0;
 
     const spec = (key: string, text: string, sub: string, local: THREE.Vector3) => this.anchors.push({ key, cls: 'spec', text, sub, local });
-    this.anchors.push({ key: 'title', cls: 'title', text: cls.name, sub: `${cls.hull}, ${cls.navy}${placeholder ? ', dimensions unknown: placeholder hull' : ''}`, local: new THREE.Vector3(0, 0, h * 2.5) });
-    spec('hull', `Length ${formatLabelled(cls.length)}`, `Beam ${formatLabelled(cls.beam)}, height ${formatLabelled(cls.height)}`, new THREE.Vector3(l / 2, 0, h));
-    spec('mass', `Mass ${formatLabelled(cls.mass)}`, `Maximum ${formatLabelled(cls.accel_max)}, normal ${formatLabelled(cls.accel_normal)}`, new THREE.Vector3(-l / 2, 0, h));
-    spec('broadside', 'Broadside, each side', `${formatLabelled(cls.broadside.missile)} tubes, ${formatLabelled(cls.broadside.graser)} grasers, ${formatLabelled(cls.broadside.cm)} CM, ${formatLabelled(cls.broadside.pd)} PD`, new THREE.Vector3(0, -b, 0));
+    this.anchors.push({ key: 'title', cls: 'title', text: cls.name, sub: `${cls.hull}, ${cls.navy}${placeholder ? ', dimensions unknown: placeholder hull' : ''}`, local: new THREE.Vector3(-0.5 * len, 0, 1.5 * off) });
+    spec('hull', `Length ${formatLabelled(cls.length)}`, `Beam ${formatLabelled(cls.beam)}, height ${formatLabelled(cls.height)}`, new THREE.Vector3(-0.5 * len, 0, 1.0 * off));
+    spec('mass', `Mass ${formatLabelled(cls.mass)}`, `Maximum ${formatLabelled(cls.accel_max)}, normal ${formatLabelled(cls.accel_normal)}`, new THREE.Vector3(-0.5 * len, 0, 0.5 * off));
+    spec('broadside', 'Broadside, each side', `${formatLabelled(cls.broadside.missile)} tubes, ${formatLabelled(cls.broadside.graser)} grasers, ${formatLabelled(cls.broadside.cm)} CM, ${formatLabelled(cls.broadside.pd)} PD`, new THREE.Vector3(-0.5 * len, 0, 0));
     spec('band', `Stress band, damage ×${ASPECT_FACTOR.wedge} [S]`, `${formatLabelled(cls.wedge.band_offset)} off the hull, ${formatLabelled(cls.wedge.band_length)} long`, new THREE.Vector3(0, 0, off));
     spec('sidewall', `Sidewall, damage ×${ASPECT_FACTOR.sidewall} [S]`, `${formatLabelled(cls.wedge.sidewall_offset)} out`, new THREE.Vector3(0, -this.sidewallU, -off / 2));
     spec('throat', `Throat (bow), damage ×${endwallFactor(cls.bow_wall)} [S]`, cls.bow_wall === 'none' ? 'open' : `${cls.bow_wall} bow wall`, new THREE.Vector3(len / 2, 0, 0));
-    spec('kilt', `Kilt (stern), damage ×${endwallFactor(cls.stern_wall)} [S]`, cls.stern_wall === 'none' ? 'open' : `${cls.stern_wall} stern wall`, new THREE.Vector3(-len / 2, 0, 0));
-    spec('pods', `Pods ${formatLabelled(cls.pod_eject_count)} per cycle`, `cycle ${formatLabelled(cls.pod_eject_cycle)}`, new THREE.Vector3(-l / 2, b, 0));
+    spec('kilt', `Kilt (stern), damage ×${endwallFactor(cls.stern_wall)} [S]`, cls.stern_wall === 'none' ? 'open' : `${cls.stern_wall} stern wall`, new THREE.Vector3(-len / 2, 0, -1.0 * off));
+    spec('pods', `Pods ${formatLabelled(cls.pod_eject_count)} per cycle`, `cycle ${formatLabelled(cls.pod_eject_cycle)}`, new THREE.Vector3(-0.5 * len, 0, -0.5 * off));
 
     const d = Math.max(l, len) * 1.4;
     this.setPose([-0.6 * d * KM_PER_UNIT, -0.9 * d * KM_PER_UNIT, 0.5 * d * KM_PER_UNIT], [0, 0, 0]);
