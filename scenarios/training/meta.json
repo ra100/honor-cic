@@ -1,0 +1,24 @@
+{
+  "id": "training",
+  "title": "Training engagement: cruiser squadrons",
+  "date": { "value": "1921-01-15", "unit": "PD-date", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon training scenario" },
+  "year_pd": 1921,
+  "era": "early-apollo-1921",
+  "location": "Training range (non-canon)",
+  "summary": "Non-canon. Four Saganami-C cruisers trade missile salvos with four Havenite heavy cruisers. It shows how a scenario pack is built.",
+  "stub": true,
+  "sides": [
+    { "id": "alliance", "name": "Manticoran Alliance", "color": "#00ff66" },
+    { "id": "haven", "name": "Republic of Haven", "color": "#ff0033" }
+  ],
+  "frame": { "origin_body": "range-star", "axes": "+X toward the Havenite start position", "evidence": "S" },
+  "duration_s": 1200,
+  "motion_model": "narrative-calibrated",
+  "ftl_speed_c": { "value": 64, "unit": "ratio", "evidence": "S", "source_id": "mts", "locator": "§7.2", "uncertainty": "declared provisional preset" },
+  "phases": [ { "id": "open", "label": "Opening salvos", "t0": 0 } ],
+  "theaters": [ { "id": "range", "label": "Range", "anchor_body": "range-planet" } ],
+  "shots": [
+    { "id": "overview", "label": "Both squadrons", "desc": "The squadrons open fire at 12 Mkm.", "t0": 0, "theater": "range", "scale": "engagement", "subject": ["tf-blue", "tf-red"], "distance_km": 2.5e7, "elev_deg": 25, "azim_deg": 30, "orbit_deg_per_min": 4 }
+  ],
+  "sources": [ { "id": "honor-cic", "title": "honor-cic training scenario (non-canon)", "kind": "S" }, { "id": "mts", "title": "Honorverse Master Technical Specification", "kind": "W" } ]
+}

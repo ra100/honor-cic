@@ -1,0 +1,162 @@
+{
+  "units": [
+    {
+      "kind": "fleet", "id": "home-fleet", "name": "Home Fleet", "side": "alliance", "theater": "sphinx",
+      "commander": { "value": "Fleet Admiral Sebastian D'Orville", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "order of battle" },
+      "flagship_name": { "value": "HMS Invictus", "unit": "text", "evidence": "S", "source_id": "honor-cic", "status": "unverified", "uncertainty": "used by earlier reconstructions; not in the wiki battle article" },
+      "ships": [
+        { "class_id": "invictus", "count": 1, "names": ["HMS Invictus"], "flagship": true, "equipment": ["keyhole"], "note": "MTS §5.2 distinguishes the lead ship's Keyhole fit" },
+        { "class_id": "invictus", "count": 11, "note": "split of the 42 SD(P) (W) between classes is S" },
+        { "class_id": "medusa", "count": 30 },
+        { "class_id": "sd-conventional", "count": 48 },
+        { "class_id": "agamemnon", "count": 12 },
+        { "class_id": "nike", "count": 7, "note": "19 BC and CA (W) split as 7 Nike and 12 Saganami-C (S)" },
+        { "class_id": "saganami-c", "count": 12 },
+        { "class_id": "cl-rmn", "count": 26 }
+      ],
+      "formation": { "kind": "wall", "facing": [0.906308, 0.422618, 0], "up": [0, 0, 1],
+        "spacing": { "value": 25000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display-friendly dispersion, well above wedge clearance (MTS §6.1)" } },
+      "state": { "t": 0, "place": { "frame": "sphinx", "position": { "value": [21.7514, 10.1428, 0], "unit": "Mkm" } },
+        "velocity": { "frame": "system", "velocity_km_s": [7250.46, 3380.94, 0] }, "evidence": "S",
+        "note": "24 Mkm beyond Sphinx along u_r, outbound at 8,000 km/s; the walls open 65.35 Mkm apart" },
+      "present": { "from": null, "from_via": null, "until": null, "until_via": null },
+      "stores": null, "evidence": "W", "source_id": "wiki-bom",
+      "note": "42 SD(P), 48 SD, 12 BC(P), 19 BC and CA, 26 CL (W)."
+    },
+    {
+      "kind": "fleet", "id": "second-fleet", "name": "Second Fleet", "side": "haven", "theater": "sphinx",
+      "commander": { "value": "Admiral Lester Tourville", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "infobox" },
+      "flagship_name": { "value": "RHNS Guerriere", "unit": "text", "evidence": "S", "source_id": "honor-cic", "status": "unverified", "uncertainty": "used by earlier reconstructions; not in the wiki battle article" },
+      "ships": [
+        { "class_id": "sovereign-of-space", "count": 240, "flagship": true, "note": "every SD(P) represented by the one class with published figures (S)" },
+        { "class_id": "rhn-clac", "count": 16 },
+        { "class_id": "rhn-bc", "count": 33 },
+        { "class_id": "rhn-ca", "count": 41 }
+      ],
+      "formation": { "kind": "wall", "facing": [-0.906308, -0.422618, 0], "up": [0, 0, 1],
+        "spacing": { "value": 25000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display-friendly dispersion" } },
+      "state": { "t": 0, "place": { "frame": "sphinx", "position": { "value": [80.9786, 37.7609, 0], "unit": "Mkm" } },
+        "velocity": { "frame": "system", "velocity_km_s": [-5437.85, -2535.71, 0] }, "evidence": "S",
+        "note": "89.35 Mkm beyond Sphinx along u_r (20.3 LM from A, inside the limit), inbound at 6,000 km/s" },
+      "present": { "from": null, "from_via": null, "until": null, "until_via": null },
+      "stores": { "pods": { "value": 60000, "unit": "count", "evidence": "S", "source_id": "honor-cic", "uncertainty": "internal and Donkey-towed pods; enough for the 524,000 missiles fired (W)" }, "pod_load": "rhn-mdm-10" },
+      "evidence": "W", "source_id": "wiki-bom",
+      "note": "240 SD(P), 16 CLAC with about 3,200 LACs, 106 BC and CA (W). 32 battlecruisers are with Diamato at the Junction (D: 106 less the 74 the LAC strike engaged)."
+    },
+    {
+      "kind": "lac", "id": "hf-lacs", "name": "Home Fleet LACs", "side": "alliance", "theater": "sphinx",
+      "commander": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "not established" },
+      "classes": { "shrike-b": 1550, "ferret": 450, "katana": 300 }, "class_evidence": "S",
+      "formation": { "kind": "swarm", "facing": [0.906308, 0.422618, 0], "up": [0, 0, 1],
+        "spacing": { "value": 2000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display spacing for a LAC wing" } },
+      "state": { "t": 1850, "place": { "relative_to": "second-fleet", "position": { "value": [-0.906308, -0.422618, 0], "unit": "Mkm" } },
+        "velocity": { "relative_to": "second-fleet", "velocity_km_s": [47128.0, 21976.1, 0] }, "evidence": "W",
+        "note": "closing at 52,000 km/s, over the 50,000 km/s the wiki gives; 1 Mkm out at t=1850 is S" },
+      "present": { "from": 600, "from_via": "launch", "until": null, "until_via": null },
+      "evidence": "W", "source_id": "wiki-bom",
+      "note": "2,300 LACs attacked Second Fleet's screen (W). The class split is S."
+    },
+    {
+      "kind": "lac", "id": "sf-lacs", "name": "Second Fleet LACs", "side": "haven", "theater": "sphinx",
+      "commander": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "not established" },
+      "classes": { "cimeterre": 2700 }, "class_evidence": "W",
+      "formation": { "kind": "swarm", "facing": [-0.906308, -0.422618, 0], "up": [0, 0, 1],
+        "spacing": { "value": 1500, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display spacing for a LAC wing" } },
+      "state": { "t": 1500, "place": { "relative_to": "second-fleet", "position": { "value": [-0.453154, -0.211309, 0], "unit": "Mkm" } },
+        "velocity": { "relative_to": "second-fleet", "velocity_km_s": [0, 0, 0] }, "evidence": "S",
+        "note": "screening 0.5 Mkm ahead of Second Fleet" },
+      "present": { "from": 1500, "from_via": "launch", "until": null, "until_via": null },
+      "evidence": "W", "source_id": "wiki-bom",
+      "note": "2,700 Cimeterre Alphas and Betas engaged the Alliance LACs (W)."
+    },
+    {
+      "kind": "fleet", "id": "third-fleet", "name": "Third Fleet", "side": "alliance", "theater": "sphinx",
+      "commander": { "value": "Admiral Theodosia Kuzak", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "order of battle" },
+      "flagship_name": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "not established" },
+      "ships": [
+        { "class_id": "invictus", "count": 8, "note": "Battle Squadron 61, detached from Eighth Fleet (W); class and size S" },
+        { "class_id": "medusa", "count": 47 },
+        { "class_id": "rmn-clac", "count": 10 }
+      ],
+      "formation": { "kind": "wall", "facing": [-0.906308, -0.422618, 0], "up": [0, 0, 1],
+        "spacing": { "value": 25000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display-friendly dispersion" } },
+      "state": { "t": 2760, "place": { "relative_to": "second-fleet", "position": { "value": [54.3785, 25.3571, 0], "unit": "Mkm" } },
+        "velocity": { "relative_to": "second-fleet", "velocity_km_s": [-40279.9, -18782.8, 0] }, "evidence": "W",
+        "note": "60 Mkm from Second Fleet 26 minutes after emerging (W); closing at 44,444 km/s so the range is 36 Mkm when Paul Revere is signalled (W)" },
+      "present": { "from": 1200, "from_via": "hyper", "until": null, "until_via": null },
+      "stores": null, "evidence": "W", "source_id": "wiki-bom",
+      "note": "55 SD(P) and 10 CLAC (W). Placed outward of Second Fleet because a hyper emergence must lie outside the 22 LM limit; see notes.md."
+    },
+    {
+      "kind": "fleet", "id": "fifth-fleet", "name": "Fifth Fleet", "side": "haven", "theater": "sphinx",
+      "commander": { "value": "Admiral Chin", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "infobox" },
+      "flagship_name": { "value": "RHNS Canonnade", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "losses" },
+      "ships": [
+        { "class_id": "sovereign-of-space", "count": 17, "names": ["RHNS Canonnade"], "name_evidence": "W", "flagship": true, "hyper_readiness": "ready",
+          "note": "the seventeen that escaped into hyper (W); generators assumed already spun up (S)" },
+        { "class_id": "sovereign-of-space", "count": 79, "hyper_readiness": "standby" }
+      ],
+      "formation": { "kind": "wall", "facing": [-0.838671, -0.544639, 0], "up": [0, 0, 1],
+        "spacing": { "value": 25000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display-friendly dispersion" } },
+      "state": { "t": 3330, "place": { "frame": "manticore-a", "position": { "value": [352.242, 228.748, 0], "unit": "Mkm" } },
+        "velocity": { "frame": "system", "velocity_km_s": [-4193.36, -2723.2, 0] }, "evidence": "S",
+        "note": "420 Mkm from A at bearing 33°, outside the 22 LM limit as a hyper emergence requires" },
+      "present": { "from": 3330, "from_via": "hyper", "until": null, "until_via": null },
+      "stores": { "pods": { "value": 6000, "unit": "count", "evidence": "S", "source_id": "honor-cic", "uncertainty": "pod stock not established" }, "pod_load": "rhn-mdm-10" },
+      "evidence": "W", "source_id": "wiki-bom",
+      "note": "96 SD(P) (W). Its 30 CLACs and about 5,000 LACs are not placed: the sources do not show them engaged (notes.md)."
+    },
+    {
+      "kind": "fleet", "id": "eighth-fleet", "name": "Eighth Fleet", "side": "alliance", "theater": "sphinx",
+      "commander": { "value": "Admiral Honor Harrington", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "infobox" },
+      "flagship_name": { "value": "HMS Imperator", "unit": "text", "evidence": "S", "source_id": "honor-cic", "status": "unverified", "uncertainty": "not in the wiki battle article" },
+      "ships": [
+        { "class_id": "invictus", "count": 19, "flagship": true, "equipment": ["keyhole-ii"], "equipment_evidence": "S",
+          "note": "Eighth Fleet fired the first Apollo salvo (W); per-ship Keyhole II fit is S" },
+        { "class_id": "harrington-ii", "count": 8, "note": "Battle Squadron 15, GSN (W); size S" },
+        { "class_id": "ian-sdp", "count": 8, "note": "Task Force 16, IAN (W); size S" },
+        { "class_id": "rmn-clac", "count": 8 }
+      ],
+      "formation": { "kind": "wall", "facing": [-0.838671, -0.544639, 0], "up": [0, 0, 1],
+        "spacing": { "value": 25000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display-friendly dispersion" } },
+      "state": { "t": 3360, "place": { "relative_to": "fifth-fleet", "position": { "value": [65.4163, 42.4818, 0], "unit": "Mkm" } },
+        "velocity": { "relative_to": "fifth-fleet", "velocity_km_s": [0, 0, 0] }, "evidence": "W",
+        "note": "78 Mkm from Fifth Fleet on emergence (W), further out along the same bearing (S)" },
+      "present": { "from": 3360, "from_via": "hyper", "until": null, "until_via": null },
+      "stores": { "pods": { "value": 15552, "unit": "count", "evidence": "D", "source_id": "wiki-bom", "uncertainty": "the 7,776 pods fired were almost half the allotment" }, "pod_load": "apollo" },
+      "evidence": "W", "source_id": "wiki-bom",
+      "note": "35 SD(P) and 8 CLAC (W)."
+    },
+    {
+      "kind": "fleet", "id": "eighth-screen", "name": "Eighth Fleet screen", "side": "alliance", "theater": "junction",
+      "commander": { "value": "Rear Admiral Michael Oversteegen", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "order of battle" },
+      "flagship_name": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "not established" },
+      "ships": [
+        { "class_id": "agamemnon", "count": 5 },
+        { "class_id": "nike", "count": 1 },
+        { "class_id": "saganami-c", "count": 12 }
+      ],
+      "formation": { "kind": "wall", "facing": [0, 1, 0], "up": [0, 0, 1],
+        "spacing": { "value": 5000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display spacing" } },
+      "state": { "t": 2950, "place": { "frame": "junction", "position": { "value": [0, -0.3, 0], "unit": "Mkm" } },
+        "velocity": { "frame": "system", "velocity_km_s": [0, 1500, 0] }, "evidence": "S" },
+      "present": { "from": 2950, "from_via": "junction", "until": null, "until_via": null },
+      "stores": null, "evidence": "W", "source_id": "wiki-bom",
+      "note": "5 BC(P), 1 BC and 12 CA (W) in Battlecruiser Squadron 81 and Cruiser Squadrons 7 and 12."
+    },
+    {
+      "kind": "fleet", "id": "diamato", "name": "Diamato's task group", "side": "haven", "theater": "junction",
+      "commander": { "value": "Rear Admiral Diamato", "unit": "text", "evidence": "W", "source_id": "wiki-bom", "locator": "course of battle" },
+      "flagship_name": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "not established" },
+      "ships": [ { "class_id": "rhn-bc", "count": 32, "hyper_readiness": "standby", "note": "count D: Second Fleet's 106 BC and CA less the 74 the LAC strike engaged" } ],
+      "formation": { "kind": "wall", "facing": [0, -1, 0], "up": [0, 0, 1],
+        "spacing": { "value": 5000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "display spacing" } },
+      "state": { "t": 0, "place": { "frame": "junction", "position": { "value": [0.5, 2.0, 0], "unit": "Mkm" } },
+        "velocity": { "frame": "system", "velocity_km_s": [0, 0, 0] }, "evidence": "S",
+        "note": "watching the terminus from outside its one-million-km exclusion" },
+      "present": { "from": null, "from_via": null, "until": null, "until_via": null },
+      "stores": null, "evidence": "W", "source_id": "wiki-bom",
+      "note": "All of Diamato's ships escaped; two battlecruisers were damaged (W)."
+    }
+  ]
+}
