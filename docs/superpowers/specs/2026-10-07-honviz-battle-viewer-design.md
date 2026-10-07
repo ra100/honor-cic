@@ -96,7 +96,7 @@ The corrections below fix the errors found in the A/B audit.
   - Keyhole is fitted only where the class and era allow it.
 - **Geometry**:
   - Ray tests cover the wedge and the sidewalls.
-  - The resonance zone is derived from wedge geometry rather than drawn as a fixed cone.
+  - Stellar hyper limits, terminus exclusions and resonance hazards are modelled separately (MTS §2.6). The resonance hazard is drawn as a labelled terminus-to-star direction, never as a fixed-width lethal cone.
 - **Defense**:
   - CM and PD are assigned to incoming packets channel by channel, with seeded resolution.
   - EW and decoys reduce the effective number of defense channels.
