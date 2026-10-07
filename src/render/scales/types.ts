@@ -53,6 +53,8 @@ export interface ScaleView {
   update(ctx: ViewContext): void;
   /** Camera pose from physical km (director shots). */
   setPose(eyeKm: Vec3, targetKm: Vec3): void;
+  /** Move the look-at point to this physical position, keeping the user's angle and distance. */
+  followTarget(targetKm: Vec3): void;
   labels(): LabelSpec[];
   /** Ship index under the pointer, or null. */
   pick(ndcX: number, ndcY: number): number | null;

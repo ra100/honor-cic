@@ -163,6 +163,15 @@ export class EngagementView implements ScaleView {
     this.controls?.target.set(0, 0, 0);
   }
 
+  followTarget(targetKm: Vec3): void {
+    const look = this.controls?.target ?? new THREE.Vector3();
+    const offset = this.camera.position.clone().sub(look);
+    this.origin.set(targetKm);
+    this.camera.position.copy(offset);
+    this.controls?.target.set(0, 0, 0);
+    this.camera.updateMatrixWorld();
+  }
+
   toRender(km: ArrayLike<number>): THREE.Vector3 {
     return this.origin.point(km, new THREE.Vector3());
   }
