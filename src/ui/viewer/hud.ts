@@ -4,7 +4,7 @@ import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import type { DirectorShot } from '../../render/director';
 import { LAYER_TEXT, LAYERS, type ScaleId } from '../../render/scales/types';
-import { h } from '../dom';
+import { clear, h } from '../dom';
 import { fmtClock } from '../format';
 import { CATALOG_HREF } from '../router';
 import type { Store } from '../store';
@@ -115,7 +115,7 @@ export function buildHud(d: HudDeps): Hud {
       h('button', { class: 'btn optional', type: 'button', onclick: d.onFullscreen }, 'Fullscreen')),
     theater,
     h('div', { class: 'group menus' }, Object.values(menuButtons),
-      h('button', { class: 'btn optional', type: 'button', onclick: () => notesDlg.showModal() }, 'Notes'),
+      h('button', { class: 'btn', type: 'button', onclick: () => notesDlg.showModal() }, 'Notes'),
       h('button', { class: 'btn optional', type: 'button', onclick: () => helpDlg.showModal() }, 'Help')),
     h('div', { class: 'group' }, forcesToggle, logToggle));
 
@@ -175,6 +175,26 @@ export function buildHud(d: HudDeps): Hud {
     onpointerup: () => { scrubbing = false; },
     onchange: () => { scrubbing = false; },
   });
+  // Phase labels need about 140 px each, so which labels fit depends on the timeline's rendered width.
+  const ticks = h('div', { class: 'ticks', 'aria-hidden': 'true' });
+  // Below 480 px only the marks are drawn; the phase buttons and the Shots menu carry the names.
+  const renderTicks = (widthPx: number) => {
+    clear(ticks);
+    const endFrom = 100 * (1 - 150 / Math.max(150, widthPx));
+    const shown: DOMRect[] = [];
+    for (const m of tickLabels(d.marks, replay.duration_s, Math.min(1, 140 / Math.max(1, widthPx)))) {
+      const el = h('span', { class: m.left > endFrom ? 'tick end' : 'tick', title: m.label, style: `left:${m.left}%` }, widthPx >= 480 && m.showLabel ? m.label : '');
+      ticks.append(el);
+      const box = el.getBoundingClientRect();
+      if (!el.textContent || box.width === 0) continue;
+      // Measured, not estimated: a label that would touch one already shown keeps only its mark.
+      if (shown.some((b) => box.left < b.right + 6 && b.left < box.right + 6)) el.textContent = '';
+      else shown.push(box);
+    }
+  };
+  renderTicks(1200);
+  const tickObserver = new ResizeObserver((entries) => renderTicks(entries[0].contentRect.width));
+  tickObserver.observe(ticks);
   const transport = h('footer', { class: 'transport panel' },
     h('div', { class: 'transport-row' },
       h('button', { class: 'btn', type: 'button', title: 'Previous phase ([)', onclick: () => set({ t: prevPhase(d.marks, store.get().t) }) }, 'Previous phase'),
@@ -182,10 +202,7 @@ export function buildHud(d: HudDeps): Hud {
       h('button', { class: 'btn', type: 'button', title: 'Next phase (])', onclick: () => { const n = nextPhase(d.marks, store.get().t); if (n !== null) set({ t: n }); } }, 'Next phase'),
       h('label', { class: 'group' }, h('span', { class: 'readout' }, 'Speed'), speed),
       shipGroup, sampling, scaleNote),
-    h('div', { class: 'timeline' },
-      h('div', { class: 'ticks', 'aria-hidden': 'true' }, tickLabels(d.marks, replay.duration_s).map((m) =>
-        h('span', { class: 'tick', title: m.label, style: `left:${m.left}%` }, m.showLabel ? m.label : ''))),
-      scrub));
+    h('div', { class: 'timeline' }, ticks, scrub));
 
   const bottombar = h('nav', { class: 'bottombar', 'aria-label': 'Panels' },
     h('button', { class: 'btn', type: 'button', onclick: () => set({ drawer: store.get().drawer === 'forces' ? 'none' : 'forces' }) }, 'Forces'),
@@ -236,6 +253,20 @@ export function buildHud(d: HudDeps): Hud {
   document.addEventListener('keydown', onKey);
   document.addEventListener('pointerdown', onDown);
 
+  // Menus sit after the HUD in the DOM, so opening one moves focus into it and closing returns focus to its button (R-32).
+  let lastMenu: ViewerState['menu'] = 'none';
+  const syncMenuFocus = (menu: ViewerState['menu']) => {
+    if (menu === lastMenu) return;
+    const closed = lastMenu;
+    lastMenu = menu;
+    if (menu !== 'none') {
+      menus[menu]?.querySelector<HTMLElement>('input, button, select')?.focus();
+    } else if (closed !== 'none') {
+      const active = document.activeElement;
+      if (!active || active === document.body || menus[closed]?.contains(active)) menuButtons[closed]?.focus();
+    }
+  };
+
   return {
     root, canvas, labels,
     render(s, live) {
@@ -247,6 +278,7 @@ export function buildHud(d: HudDeps): Hud {
       if (theater && theater.value !== s.theater) theater.value = s.theater;
       for (const [id, btn] of Object.entries(menuButtons)) setAttr(btn!, 'aria-expanded', String(s.menu === id));
       for (const [id, el] of Object.entries(menus)) el!.hidden = s.menu !== id;
+      syncMenuFocus(s.menu);
       for (const l of layerBoxes) l.box.checked = s.layers[l.id];
       actual.checked = !s.perceived.enabled;
       perceived.checked = s.perceived.enabled;
@@ -277,6 +309,7 @@ export function buildHud(d: HudDeps): Hud {
       inspector.render(s.selectedShip, live.frame.t);
     },
     dispose() {
+      tickObserver.disconnect();
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onDown);
       root.remove();
