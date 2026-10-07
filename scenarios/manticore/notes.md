@@ -1,0 +1,35 @@
+# Battle of Manticore: sources and caveats
+
+The viewer replays a reconstruction. Every number carries an evidence label:
+
+- **P**: a novel or the author, as quoted by the MTS.
+- **W**: the Honorverse wiki or the project's MTS reference tables.
+- **D**: derived by calculation from sourced inputs.
+- **S**: speculative. These are reconstructions and provisional values, never canon.
+
+## Sources
+- Battle of Manticore, Honorverse wiki: https://honorverse.fandom.com/wiki/Battle_of_Manticore
+- Honorverse Master Technical Specification (MTS), the project's reference document, in `docs/`.
+- David Weber, *On Basilisk Station*, as quoted by the MTS for the 22 LM hyper limit.
+
+## Naming
+This is the Battle of Manticore (Operation Beatrice was the Havenite plan). Prefixing the title with "Eighth" is wrong: "Eighth" refers to Harrington's Eighth Fleet, not to a numbered battle (MTS §10.1).
+
+## Motion model
+Missiles fly a narrative-calibrated classical profile:
+- The Mk23 runs three 180 s stages at the 48,000 g half setting, with a ballistic coast before the last stage.
+- Burnout from rest is about 0.85c. The wiki reports 0.83c and Weber's FAQ 0.81c (MTS §4.4), and both are kept as reference values.
+- Nothing is forced to arrive on time, and nothing exceeds c.
+
+## Known conflicts and choices
+- **Sphinx orbit**: the scenario keeps 15.30 LM (S). Kepler with Sphinx's 5.22-year period gives about 26 LM (MTS §2.2). The conflict is shown, not hidden.
+- **Draco and Roc**: the order is Draco A-V, then Roc A-VI. The draft's radii follow their orbital slots.
+- **Sphinx phase (25°)**: chosen so the fighting happens toward the Junction. That direction holds the provisional resonance zone the narrative refers to.
+- **Third Fleet placement**: the wiki says Third Fleet emerged closer to Sphinx than Second Fleet. A hyper emergence must lie outside the 22 LM limit, and with this Second Fleet track that is impossible. Third Fleet is therefore placed outward of Second Fleet, and the two W range facts (60 Mkm after 26 minutes, 36 Mkm at Paul Revere) are kept exactly.
+- **LAC counts**: the wiki says almost 3,000 LACs died with Home Fleet. The LAC strike accounts for 1,493, and the casualty box gives 2,806 Alliance LACs in total. Only the strike's 1,493 are modeled, so 1,313 Alliance LAC losses are unattributed.
+- **Havenite screen losses**: the casualty box lists 64 BC and 54 CA destroyed. The modeled screen accounts for 33 BC and 41 CA. Diamato's 32 battlecruisers escaped. The remainder is unattributed.
+- **Fifth Fleet's carriers**: the 30 CLACs and about 5,000 LACs are not placed. The sources do not show them engaged.
+- **Flagship names**: HMS Invictus (Home Fleet), RHNS Guerriere (Second Fleet) and HMS Imperator (Eighth Fleet) are unverified (S). RHNS Canonnade is W.
+- **Fifth Fleet's escapees**: seventeen ships escaped (W). The assumption that their generators were already spun up is S. It makes the "two minutes too late" order consistent with readiness times (MTS §3.5).
+- **Defense calibration**: CM and PD constants are S, tuned so that Fifth Fleet stops about 30% of the Apollo strike (W). The `canon` validator reports the solved share.
+- **Damage**: canon loss counts are enforced exactly. Which individual ship received which result is a reconstruction ranked by modeled damage (S).
