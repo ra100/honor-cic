@@ -163,6 +163,30 @@ const canonCheck: ReplayCheck = ({ pack, replay }) => {
   return out;
 };
 
+/** Slack over a beam's stated range: swarm and formation spread around the unit centre. S display tolerance. */
+const BEAM_RANGE_SLACK = 1.5;
+
+/** MTS §12.2 check 9, beam part: energy weapons fire only from within their stated range. */
+const beamRangeCheck: ReplayCheck = ({ pack, replay }) => {
+  const out: Issue[] = [];
+  const times = solvedTimes(pack, replay);
+  for (const ev of pack.events) {
+    if (ev.type !== 'beam_attack') continue;
+    const range = baseValue(ev.range);
+    if (range === null) continue;
+    const a = unitById(replay, ev.from);
+    const b = unitById(replay, ev.to);
+    for (const t of [times.resolve(ev.t), times.resolve(ev.until)]) {
+      const d = dist(unitPosition(a, t), unitPosition(b, t));
+      if (d > range * BEAM_RANGE_SLACK) {
+        out.push(issue('geometry', 'error', `${ev.id}: ${a.name} fires at ${b.name} from ${fmtDistance(d)} at t=${t.toFixed(0)}, beyond its stated range of ${fmtDistance(range)}`, `events.${ev.id}`));
+        break;
+      }
+    }
+  }
+  return out;
+};
+
 /** MTS §12.2 check 6, replay part: packets carry exactly what the plan launched. */
 const conservationCheck: ReplayCheck = ({ pack, replay }) => {
   const out: Issue[] = [];
@@ -183,4 +207,4 @@ const conservationCheck: ReplayCheck = ({ pack, replay }) => {
   return out;
 };
 
-export const REPLAY_CHECKS: ReplayCheck[] = [flightCheck, launchGeometryCheck, latencyCheck, escapeCheck, canonCheck, conservationCheck];
+export const REPLAY_CHECKS: ReplayCheck[] = [flightCheck, launchGeometryCheck, latencyCheck, escapeCheck, canonCheck, beamRangeCheck, conservationCheck];
