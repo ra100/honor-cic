@@ -4,7 +4,7 @@ import type { TechRegistry } from '../../core/tech';
 import { clear, h } from '../dom';
 import { logLine } from '../format';
 import type { Store } from '../store';
-import { forcesModel, inspectorModel, logModel, type ViewerState } from './model';
+import { forcesModel, inspectorModel, logModel, logVisible, type ViewerState } from './model';
 
 const LOG_LIMIT = 300;
 
@@ -29,9 +29,9 @@ export class ForcesPanel {
     this.el = h('aside', { class: 'forces panel', id: 'forces', 'aria-label': 'Forces' });
   }
 
-  render(frame: Frame): void {
-    const sides = forcesModel(this.replay, frame);
-    const sig = JSON.stringify(sides.map((s) => s.units.map((u) => [u.presence, u.lacText, u.counts.map((c) => `${c.status}:${c.n}`)])));
+  render(frame: Frame, only: string | null = null): void {
+    const sides = forcesModel(this.replay, frame, only);
+    const sig = JSON.stringify([only, ...sides.map((s) => s.units.map((u) => [u.presence, u.lacText, u.counts.map((c) => `${c.status}:${c.n}`)]))]);
     if (sig === this.sig) return;
     this.sig = sig;
     clear(this.el);
@@ -76,20 +76,22 @@ export class LogPanel {
     return h('li', { class: cls }, logLine(e));
   }
 
-  render(t: number, side: string): void {
+  render(t: number, side: string, only: string | null = null): void {
     if (this.filter.value !== side) this.filter.value = side;
+    this.filter.disabled = only !== null;
+    const key = `${side}|${only ?? ''}`;
     const atBottom = this.list.scrollTop + this.list.clientHeight >= this.list.scrollHeight - 4;
-    if (t < this.lastT || side !== this.lastSide) {
+    if (t < this.lastT || key !== this.lastSide) {
       clear(this.list);
-      for (const r of logModel(this.replay, t, side, LOG_LIMIT)) this.list.append(this.row(r.entry));
+      for (const r of logModel(this.replay, t, side, LOG_LIMIT, only)) this.list.append(this.row(r.entry));
     } else if (t > this.lastT) {
       for (const e of logBetween(this.replay, this.lastT, t)) {
-        if (side === 'all' || e.side === side || e.side === null) this.list.append(this.row(e));
+        if (logVisible(e, side, only)) this.list.append(this.row(e));
       }
       while (this.list.childElementCount > LOG_LIMIT) this.list.firstElementChild!.remove();
     } else return;
     this.lastT = t;
-    this.lastSide = side;
+    this.lastSide = key;
     if (atBottom) this.list.scrollTop = this.list.scrollHeight;
   }
 }

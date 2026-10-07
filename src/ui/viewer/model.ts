@@ -122,9 +122,23 @@ export interface ForceUnitRow {
 }
 export interface ForceSide { id: string; name: string; ally: boolean; units: ForceUnitRow[] }
 
-export function forcesModel(r: Replay, frame: Frame): ForceSide[] {
-  return r.sides.map((side, si) => ({
-    id: side.id, name: side.name, ally: si === 0,
+/** The side whose commander the UI speaks for; null means ground truth (Actual). */
+export const knownSide = (s: Pick<ViewerState, 'perceived'>): string | null => (s.perceived.enabled ? s.perceived.side : null);
+
+/** A selection the commander could not know about (another side's ship) is dropped in the perceived picture. */
+export function perceivedSelection(r: Replay, s: Pick<ViewerState, 'perceived' | 'selectedShip'>): number | null {
+  const side = knownSide(s);
+  if (side === null || s.selectedShip === null) return s.selectedShip;
+  return r.ships[s.selectedShip]?.side === side ? s.selectedShip : null;
+}
+
+/** Log filter: in the perceived picture only the commander's own side's entries, never neutral narrative. */
+export const logVisible = (e: LogEntry, side: string, only: string | null = null): boolean =>
+  only !== null ? e.side === only : side === 'all' || e.side === side || e.side === null;
+
+export function forcesModel(r: Replay, frame: Frame, only: string | null = null): ForceSide[] {
+  return r.sides.filter((side) => only === null || side.id === only).map((side) => ({
+    id: side.id, name: side.name, ally: side.id === r.sides[0].id,
     units: r.units.filter((u) => u.side === side.id).map((u): ForceUnitRow => {
       const presence = unitPresent(u, frame.t) ? 'present' : frame.t < u.tAppear ? 'arriving' : 'departed';
       if (u.kind === 'lac') {
@@ -186,7 +200,7 @@ export function inspectorModel(pack: ScenarioPack, tech: TechRegistry, r: Replay
 export interface LogRow { t: number; side: string | null; text: string; entry: LogEntry }
 
 /** The last `limit` entries up to t, optionally for one side (entries without a side always show). */
-export function logModel(r: Replay, t: number, side: string, limit = 300): LogRow[] {
-  const rows = logUntil(r, t).filter((e) => side === 'all' || e.side === side || e.side === null);
+export function logModel(r: Replay, t: number, side: string, limit = 300, only: string | null = null): LogRow[] {
+  const rows = logUntil(r, t).filter((e) => logVisible(e, side, only));
   return rows.slice(-limit).map((e) => ({ t: e.t, side: e.side, text: logLine(e), entry: e }));
 }
