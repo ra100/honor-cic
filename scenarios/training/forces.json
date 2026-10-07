@@ -1,0 +1,20 @@
+{
+  "units": [
+    { "kind": "fleet", "id": "tf-blue", "name": "Training squadron Blue", "side": "alliance", "theater": "range",
+      "commander": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" },
+      "flagship_name": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" },
+      "ships": [ { "class_id": "saganami-c", "count": 4 } ],
+      "formation": { "kind": "wall", "facing": [1, 0, 0], "up": [0, 0, 1], "spacing": { "value": 3000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" } },
+      "state": { "t": 0, "place": { "frame": "range-planet", "position": { "value": [-6, 0, 0], "unit": "Mkm" } }, "velocity": { "frame": "system", "velocity_km_s": [1000, 0, 0] }, "evidence": "S" },
+      "present": { "from": null, "from_via": null, "until": null, "until_via": null },
+      "stores": null, "evidence": "S", "source_id": "honor-cic" },
+    { "kind": "fleet", "id": "tf-red", "name": "Training squadron Red", "side": "haven", "theater": "range",
+      "commander": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" },
+      "flagship_name": { "value": null, "unit": "text", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" },
+      "ships": [ { "class_id": "rhn-ca", "count": 4 } ],
+      "formation": { "kind": "wall", "facing": [-1, 0, 0], "up": [0, 0, 1], "spacing": { "value": 3000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" } },
+      "state": { "t": 0, "place": { "frame": "range-planet", "position": { "value": [6, 0, 0], "unit": "Mkm" } }, "velocity": { "frame": "system", "velocity_km_s": [-1000, 0, 0] }, "evidence": "S" },
+      "present": { "from": null, "from_via": null, "until": null, "until_via": null },
+      "stores": null, "evidence": "S", "source_id": "honor-cic" }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "id": "manticore",
+  "title": "Battle of Manticore",
+  "alt_titles": ["Operation Beatrice (the Havenite plan)"],
+  "date": { "value": "1921-07-24", "unit": "PD-date", "evidence": "W", "source_id": "wiki-bom", "locator": "infobox" },
+  "year_pd": 1921,
+  "era": "early-apollo-1921",
+  "location": "Manticore binary system",
+  "summary": "Second and Fifth Fleets strike at the heart of the Star Kingdom. Home Fleet and Third Fleet are destroyed holding them off Sphinx. Eighth Fleet's first Apollo salvo destroys Fifth Fleet, and Second Fleet surrenders.",
+  "stub": false,
+  "sides": [
+    { "id": "alliance", "name": "Manticoran Alliance", "color": "#00ff66" },
+    { "id": "haven", "name": "Republic of Haven", "color": "#ff0033" }
+  ],
+  "frame": {
+    "origin_body": "manticore-a",
+    "axes": "Origin at Manticore-A. +X toward the projected Junction direction, +Y in the reference plane, +Z normal to it. A map convention, not an astronomical orientation (MTS §1.2).",
+    "evidence": "S"
+  },
+  "duration_s": 5400,
+  "motion_model": "narrative-calibrated",
+  "ftl_speed_c": { "value": 64, "unit": "ratio", "evidence": "S", "source_id": "mts", "locator": "§7.2", "uncertainty": "declared provisional grav-pulse preset (MTS Appendix A)" },
+  "phases": [
+    { "id": "home-fleet", "label": "Home Fleet meets Second Fleet", "t0": 0 },
+    { "id": "aftermath-1", "label": "Second Fleet turns away", "t0": 714 },
+    { "id": "third-fleet", "label": "Third Fleet emerges", "t0": 1200 },
+    { "id": "lac-strike", "label": "LAC strike on the screen", "t0": { "ref": "lac-ferret-flush", "anchor": "t", "offset_s": -90 } },
+    { "id": "junction", "label": "Eighth Fleet's screen at the Junction", "t0": { "ref": "fp-8fs-diamato", "anchor": "t", "offset_s": -30 } },
+    { "id": "paul-revere", "label": "Paul Revere: Fifth Fleet arrives", "t0": { "ref": "sig-paul-revere", "anchor": "t", "offset_s": 0 } },
+    { "id": "apollo", "label": "Apollo strike", "t0": { "ref": "fp-apollo-5f", "anchor": "launch", "offset_s": -20 } },
+    { "id": "surrender", "label": "Second Fleet surrenders", "t0": { "ref": "sur-2f", "anchor": "t", "offset_s": 0 } }
+  ],
+  "theaters": [
+    { "id": "sphinx", "label": "Sphinx approaches", "anchor_body": "sphinx" },
+    { "id": "junction", "label": "Junction terminus", "anchor_body": "junction" }
+  ],
+  "shots": [
+    { "id": "system", "label": "The system", "desc": "Manticore-A, the 22 LM hyper limit and Sphinx. Second Fleet is already inside the limit.", "t0": 0, "theater": "sphinx", "scale": "system", "subject": ["manticore-a"], "distance_km": 1.2e9, "elev_deg": 35, "azim_deg": -30, "orbit_deg_per_min": 2 },
+    { "id": "walls", "label": "Walls of battle", "desc": "Home Fleet and Second Fleet, 65 Mkm apart, open fire.", "t0": 40, "theater": "sphinx", "scale": "engagement", "subject": ["home-fleet", "second-fleet"], "distance_km": 9e7, "elev_deg": 20, "azim_deg": 70, "orbit_deg_per_min": 3 },
+    { "id": "hf-impact", "label": "Home Fleet under fire", "desc": "Havenite laserheads reach Home Fleet.", "t0": { "ref": "fp-2f-hf", "anchor": "arrival", "offset_s": -40 }, "theater": "sphinx", "scale": "engagement", "subject": ["home-fleet"], "distance_km": 3e6, "elev_deg": 15, "azim_deg": 120, "orbit_deg_per_min": 6 },
+    { "id": "sf-impact", "label": "Second Fleet hit", "desc": "Home Fleet's salvos arrive on Second Fleet's wall.", "t0": { "ref": "fp-hf-2f", "anchor": "arrival", "offset_s": -20 }, "theater": "sphinx", "scale": "engagement", "subject": ["second-fleet"], "distance_km": 5e6, "elev_deg": 25, "azim_deg": -100, "orbit_deg_per_min": 4 },
+    { "id": "lacs", "label": "LAC strike", "desc": "2,300 Alliance LACs go through Second Fleet's screen at over 50,000 km/s.", "t0": { "ref": "lac-ferret-flush", "anchor": "t", "offset_s": -60 }, "theater": "sphinx", "scale": "engagement", "subject": ["hf-lacs", "second-fleet"], "distance_km": 2.5e6, "elev_deg": 10, "azim_deg": 40, "orbit_deg_per_min": 5 },
+    { "id": "third-fleet", "label": "Third Fleet", "desc": "Third Fleet emerges from hyper and closes on Second Fleet.", "t0": 1200, "theater": "sphinx", "scale": "engagement", "subject": ["third-fleet", "second-fleet"], "distance_km": 2.2e8, "elev_deg": 30, "azim_deg": 10, "orbit_deg_per_min": 2 },
+    { "id": "junction", "label": "The Junction", "desc": "Eighth Fleet's screen pushes Diamato's battlecruisers off the terminus.", "t0": { "ref": "fp-8fs-diamato", "anchor": "t", "offset_s": -30 }, "theater": "junction", "scale": "engagement", "subject": ["eighth-screen", "diamato"], "distance_km": 8e6, "elev_deg": 25, "azim_deg": -20, "orbit_deg_per_min": 4 },
+    { "id": "paul-revere", "label": "Paul Revere", "desc": "Fifth Fleet translates in beyond the limit and opens fire on Third Fleet.", "t0": { "ref": "sig-paul-revere", "anchor": "t", "offset_s": 0 }, "theater": "sphinx", "scale": "engagement", "subject": ["fifth-fleet", "third-fleet"], "distance_km": 1.6e8, "elev_deg": 25, "azim_deg": 60, "orbit_deg_per_min": 2 },
+    { "id": "apollo-launch", "label": "Apollo launch", "desc": "Eighth Fleet launches 7,776 Apollo pods at 78 Mkm.", "t0": { "ref": "fp-apollo-5f", "anchor": "launch", "offset_s": -20 }, "theater": "sphinx", "scale": "engagement", "subject": ["eighth-fleet"], "distance_km": 4e6, "elev_deg": 20, "azim_deg": -60, "orbit_deg_per_min": 5 },
+    { "id": "apollo-arrival", "label": "Apollo arrival", "desc": "54,208 attack missiles reach Fifth Fleet.", "t0": { "ref": "fp-apollo-5f", "anchor": "arrival", "offset_s": -45 }, "theater": "sphinx", "scale": "engagement", "subject": ["fifth-fleet"], "distance_km": 4e6, "elev_deg": 15, "azim_deg": 150, "orbit_deg_per_min": 6 },
+    { "id": "surrender", "label": "Surrender", "desc": "Second Fleet surrenders.", "t0": { "ref": "sur-2f", "anchor": "t", "offset_s": -30 }, "theater": "sphinx", "scale": "engagement", "subject": ["second-fleet"], "distance_km": 8e6, "elev_deg": 30, "azim_deg": 0, "orbit_deg_per_min": 1 }
+  ],
+  "sources": [
+    { "id": "mts", "title": "Honorverse Master Technical Specification (project reference document)", "kind": "W" },
+    { "id": "wiki-bom", "title": "Battle of Manticore, Honorverse wiki", "url": "https://honorverse.fandom.com/wiki/Battle_of_Manticore", "kind": "W" },
+    { "id": "obs", "title": "David Weber, On Basilisk Station (quoted by the MTS)", "kind": "P" },
+    { "id": "honor-cic", "title": "honor-cic reconstruction (this project)", "kind": "S" }
+  ]
+}

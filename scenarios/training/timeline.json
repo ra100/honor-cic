@@ -1,0 +1,15 @@
+{
+  "events": [
+    { "id": "fp-blue", "type": "fire_plan", "t": 0, "engagement": "e1", "from": "tf-blue", "to": "tf-red", "profile": "mk16-ddm",
+      "salvos": 3, "interval_s": 18, "launch": "tube", "pod_load": null, "pods": null,
+      "totals": { "attack": 240, "ew": 0, "controller": 0 }, "guidance": "shipboard", "packets_per_salvo": 4, "arrival_window": null,
+      "evidence": "S", "source_id": "honor-cic", "seed": 1 },
+    { "id": "fp-red", "type": "fire_plan", "t": 5, "engagement": "e1", "from": "tf-red", "to": "tf-blue", "profile": "mk16-ddm",
+      "salvos": 3, "interval_s": 20, "launch": "tube", "pod_load": null, "pods": null,
+      "totals": { "attack": 120, "ew": 0, "controller": 0 }, "guidance": "shipboard", "packets_per_salvo": 4, "arrival_window": null,
+      "evidence": "S", "source_id": "honor-cic", "seed": 2 },
+    { "id": "c-open", "type": "range", "t": 0, "a": "tf-blue", "b": "tf-red",
+      "distance": { "value": 12000000, "unit": "km", "evidence": "S", "source_id": "honor-cic", "uncertainty": "non-canon" }, "min": null, "tolerance": 0.02,
+      "evidence": "S", "source_id": "honor-cic", "seed": 3 }
+  ]
+}
