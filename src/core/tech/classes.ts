@@ -27,7 +27,7 @@ function defense(cmWaves: number, pkCm: number, pdShots: number, pkPd: number): 
   };
 }
 const RMN_DEF = () => defense(4, 0.6, 6, 0.6);
-const RHN_DEF = () => defense(4, 0.5, 6, 0.45);
+const RHN_DEF = () => defense(5, 0.62, 7, 0.58);
 const LAC_DEF = () => defense(2, 0.4, 4, 0.4);
 
 const DUR = (n: number) => REC(n, 'ratio', 'abstract durability used only to rank damage; scaled from Site A hit points');
