@@ -1,7 +1,7 @@
 import { baseValue } from '../evidence';
-import { podArithmetic, allSourceValues } from '../tech';
-import { gToKmS2, kmS2ToG, kmToLm, kmToMkm, lmToKm, mkmToKm, type Unit } from '../units';
-import { ejectRate, firePlans, launcherTubes, magazineTotal, podCapacity } from './forces';
+import { capOf, podArithmetic, allSourceValues } from '../tech';
+import { G0_KM_S2, gToKmS2, kmS2ToG, kmToLm, kmToMkm, lmToKm, mkmToKm, type Unit } from '../units';
+import { ejectRate, firePlans, launcherTubes, magazineTotal, podCapacity, shipsOf } from './forces';
 import { issue, type Issue, type StaticCheck } from './types';
 import { bodyPosition, indexBodies, orbitPolyline } from '../solver/orbits';
 import { dist } from '../vec';
@@ -289,14 +289,54 @@ const projectionCheck: StaticCheck = ({ pack }) => {
   return out;
 };
 
+/** MTS §12.2 check 9, fleet part: maneuvers stay within the slowest member's limits (MTS §3.2). */
+const fleetFlightCheck: StaticCheck = ({ pack, tech }) => {
+  const out: Issue[] = [];
+  const units = new Map(pack.units.map((u) => [u.id, u]));
+  for (const ev of pack.events) {
+    if (ev.type !== 'maneuver') continue;
+    const u = units.get(ev.unit);
+    const a = baseValue(ev.accel);
+    if (!u || a === null) continue;
+    const g = a / G0_KM_S2;
+    const groups = shipsOf(u, tech);
+    const maxes = groups.map((x) => capOf(x.cls, x.entry, 'accel_max').value).filter((v): v is number => v !== null);
+    const normals = groups.map((x) => capOf(x.cls, x.entry, 'accel_normal').value).filter((v): v is number => v !== null);
+    if (maxes.length && g > Math.min(...maxes) + 1e-9) {
+      out.push(issue('flight', 'error', `${ev.id}: ${g.toFixed(1)} g exceeds the slowest member's maximum of ${Math.min(...maxes)} g`, `events.${ev.id}`));
+    } else if (normals.length && g > Math.min(...normals) + 1e-9) {
+      out.push(issue('flight', 'warn', `${ev.id}: ${g.toFixed(1)} g is above the slowest member's normal ${Math.min(...normals)} g`, `events.${ev.id}`));
+    }
+  }
+  return out;
+};
+
+/** MTS §12.2 check 10, formation part: neighbouring wedges never overlap (MTS §6.1). */
+const formationGeometryCheck: StaticCheck = ({ pack, tech }) => {
+  const out: Issue[] = [];
+  for (const u of pack.units) {
+    if (u.kind !== 'fleet' || u.formation.kind === 'swarm') continue;
+    const spacing = baseValue(u.formation.spacing);
+    if (spacing === null) {
+      out.push(issue('geometry', 'error', `${u.name}: formation spacing unknown`, `units.${u.id}`));
+      continue;
+    }
+    let along = 0;
+    let between = 0;
+    for (const { cls, entry } of shipsOf(u, tech)) {
+      along = Math.max(along, baseValue(capOf(cls, entry, 'wedge.band_length')) ?? 0);
+      between = Math.max(between, 2 * (baseValue(capOf(cls, entry, 'wedge.band_offset')) ?? 0));
+    }
+    const rowGap = u.formation.kind === 'wall' ? 0.6 * spacing : spacing;
+    if (spacing < along || rowGap < between) {
+      out.push(issue('geometry', 'error',
+        `${u.name}: ${spacing} km spacing lets neighbouring wedges overlap (needs ${along} km bow to stern and ${between} km between rows)`, `units.${u.id}`));
+    }
+  }
+  return out;
+};
+
 export const STATIC_CHECKS: StaticCheck[] = [
-  unitsCheck,
-  framesStructureCheck,
-  framesPositionCheck,
-  projectionCheck,
-  epochCheck,
-  weaponsCheck,
-  inventoryCheck,
-  guidanceCheck,
-  eraCheck,
+  unitsCheck, framesStructureCheck, framesPositionCheck, projectionCheck, epochCheck,
+  weaponsCheck, inventoryCheck, guidanceCheck, eraCheck, fleetFlightCheck, formationGeometryCheck,
 ];
