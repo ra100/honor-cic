@@ -22,6 +22,9 @@ Missiles fly a narrative-calibrated classical profile:
 - Nothing is forced to arrive on time, and nothing exceeds c.
 
 ## Known conflicts and choices
+- **No fleet-wide defensive rolls**: a wall of battle firing its own salvos keeps its broadside to the enemy. An earlier draft rolled Home Fleet and Fifth Fleet 90° before the missiles arrived; with the wedge then facing the threat every leaker struck the stress band, which contradicts the canon losses. Rolls stay available for ships and smaller scenarios.
+- **Missile lethality (calibration, S)**: `hit_fraction` is 0.09 for the Mk23 and Mk16 and 0.075 for the Havenite MDM. With these, mechanistic damage knocks out about 109 of Second Fleet's 240 SD(P) under Home Fleet's 150,000 missiles (canon: 97 destroyed and 19 mission kills), destroys all of Home Fleet and Third Fleet, and leaves Fifth Fleet intact until the Apollo strike.
+- **Havenite defense preset (calibration, S)**: 5 counter-missile waves at Pk 0.62 and 7 point-defense shots at Pk 0.58 per mount. Fifth Fleet then stops 28% of the Apollo strike (canon: about 30%).
 - **Sphinx orbit**: the scenario keeps 15.30 LM (S). Kepler with Sphinx's 5.22-year period gives about 26 LM (MTS §2.2). The conflict is shown, not hidden.
 - **Draco and Roc**: the order is Draco A-V, then Roc A-VI. The draft's radii follow their orbital slots.
 - **Sphinx phase (25°)**: chosen so the fighting happens toward the Junction. That direction holds the provisional resonance zone the narrative refers to.
