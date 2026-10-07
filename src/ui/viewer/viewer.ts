@@ -16,7 +16,7 @@ import { clear, h } from '../dom';
 import { CATALOG_HREF } from '../router';
 import { createStore, type Store } from '../store';
 import { buildHud, type Live } from './hud';
-import { advance, eventIndex, initialState, phaseMarks, type ViewerState } from './model';
+import { advance, eventIndex, initialState, perceivedSelection, phaseMarks, type ViewerState } from './model';
 
 declare global {
   interface Window { __honorCic?: { store: Store<ViewerState>; duration: number; view(): ScaleView | undefined } }
@@ -150,6 +150,11 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       s = store.get();
     }
     sampleFrame(replay, s.t, frame);
+    const known = perceivedSelection(replay, s);
+    if (known !== s.selectedShip) {
+      store.set({ selectedShip: known });
+      s = store.get();
+    }
 
     if (s.camera === 'director' && shots.length) {
       const shot = shotAt(shots, s.t)!;
@@ -161,8 +166,8 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       const changed = prevShot !== null && prevShot.id !== shot.id;
       const snap = prevShot === null || jumped || (changed && (s.reducedMotion || prevShot.scale !== shot.scale));
       const obs = s.perceived.enabled ? observerUnit(replay, s.perceived.side, shot.theater, s.t) : null;
-      const framed = perceivedSubject(shot, obs === null ? null : replay.units[obs].id);
-      rig.follow(directorPose(framed, replay, frame, s.reducedMotion), dt, snap);
+      const framed = perceivedSubject(shot, obs === null ? null : replay.units[obs].id, s.perceived.enabled);
+      if (framed) rig.follow(directorPose(framed, replay, frame, s.reducedMotion), dt, snap);
       prevShot = { id: shot.id, scale: shot.scale };
       views.get(s.scale)?.setPose(rig.eye, rig.target);
     } else {
