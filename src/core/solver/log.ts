@@ -5,6 +5,7 @@ import type { TimeResolver } from './timeref';
 import { splitEven } from './packets';
 
 const VIA: Record<string, string> = { hyper: 'translates in from hyper', junction: 'arrives through the Junction', launch: 'launches' };
+const DEPART: Record<string, string> = { hyper: 'translates out into hyper', junction: 'leaves through the Junction', recovered: 'is recovered aboard its carriers' };
 
 /** CIC log lines for scripted events; combat lines come from the defense and beam resolvers. */
 export function narrativeLog(pack: ScenarioPack, times: TimeResolver, units: UnitRuntime[]): LogEntry[] {
@@ -14,6 +15,9 @@ export function narrativeLog(pack: ScenarioPack, times: TimeResolver, units: Uni
     const u = unit(def.id);
     if (u && Number.isFinite(u.tAppear) && def.present.from_via) {
       out.push({ t: u.tAppear, side: u.side, kind: 'transit', text: `${u.name} ${VIA[def.present.from_via]}`, evidence: def.evidence, source_id: def.source_id });
+    }
+    if (u && Number.isFinite(u.tDepart) && def.present.until_via) {
+      out.push({ t: u.tDepart, side: u.side, kind: 'transit', text: `${u.name} ${DEPART[def.present.until_via]}`, evidence: def.evidence, source_id: def.source_id });
     }
   }
   for (const ev of pack.events) {
