@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { baseValue } from '../../core/evidence';
+import { commanderPicture, replayTrackables, type CommanderPicture } from '../../core/perceived';
 import { unitPresent, type Replay } from '../../core/replay';
 import type { ScenarioPack } from '../../core/schema';
+import type { Trackable } from '../../core/sensors';
 import { bodyPosition, indexBodies, orbitPolyline } from '../../core/solver/orbits';
 import { fmtCount, fmtDistance, LM_KM } from '../../core/units';
 import type { Vec3 } from '../../core/vec';
@@ -10,6 +12,7 @@ import type { LabelSpec } from '../labels';
 import { FloatingOrigin } from '../origin';
 import { PALETTE, rgbOf, sideColor } from '../palette';
 import { PointCloud } from '../points';
+import { ageText } from './engagement-view';
 import type { ScaleView, ViewContext, ViewStatus } from './types';
 
 /** One render unit is one Mkm. */
@@ -28,6 +31,11 @@ export class SystemView implements ScaleView {
   private staticLabels: LabelSpec[] = [];
   private specs: LabelSpec[] = [];
   private framed = false;
+  private tracks: Trackable[] = [];
+  private tracksTheater: string | null = null;
+  private picture: CommanderPicture = { observer: null, contacts: [] };
+  private pictureKey = '';
+  private notice: string | null = null;
 
   constructor(private readonly pack: ScenarioPack, private readonly replay: Replay, dom: HTMLElement | null) {
     this.index = indexBodies(pack.bodies);
@@ -114,14 +122,18 @@ export class SystemView implements ScaleView {
       }
     }
 
-    this.replay.units.forEach((u, i) => {
-      if (!unitPresent(u, t) || ctx.frame.unitCount[i] === 0) return;
-      const pv = this.origin.point(ctx.frame.unitPos.subarray(i * 3, i * 3 + 3));
-      const n = ctx.frame.unitCount[i];
-      this.unitCloud.push(pv.x, pv.y, pv.z, rgbOf(sideColor(this.replay, u.side), 1), 8 + Math.log2(1 + n), u.kind === 'fleet' ? 1 : 0);
-      const ally = u.side === this.replay.sides[0].id;
-      specs.push({ key: `unit:${u.id}`, cls: `fleet ${ally ? 'allied' : 'hostile'}`, text: u.name, sub: `${fmtCount(n)} ${u.kind === 'lac' ? 'LACs' : 'ships'}`, pos: pv });
-    });
+    this.notice = null;
+    if (ctx.layers.truth && !ctx.perceived.enabled) {
+      this.replay.units.forEach((u, i) => {
+        if (!unitPresent(u, t) || ctx.frame.unitCount[i] === 0) return;
+        const pv = this.origin.point(ctx.frame.unitPos.subarray(i * 3, i * 3 + 3));
+        const n = ctx.frame.unitCount[i];
+        this.unitCloud.push(pv.x, pv.y, pv.z, rgbOf(sideColor(this.replay, u.side), 1), 8 + Math.log2(1 + n), u.kind === 'fleet' ? 1 : 0);
+        const ally = u.side === this.replay.sides[0].id;
+        specs.push({ key: `unit:${u.id}`, cls: `fleet ${ally ? 'allied' : 'hostile'}`, text: u.name, sub: `${fmtCount(n)} ${u.kind === 'lac' ? 'LACs' : 'ships'}`, pos: pv });
+      });
+    }
+    if (ctx.perceived.enabled || ctx.layers.commander) this.drawContacts(ctx, specs);
 
     this.bodyCloud.commit();
     this.unitCloud.commit();
@@ -135,6 +147,31 @@ export class SystemView implements ScaleView {
       this.setPose([target[0] - d * 0.35, target[1] - d, target[2] + d * 0.55], target);
     }
     this.controls?.update();
+  }
+
+  /** Fleets as one commander knows them: delayed by light or the FTL sensor preset (MTS §7); packets are left to the engagement view. */
+  private drawContacts(ctx: ViewContext, specs: LabelSpec[]): void {
+    if (this.tracksTheater !== ctx.theater) {
+      this.tracks = replayTrackables(this.replay, ctx.theater).filter((o) => o.kind !== 'packet');
+      this.tracksTheater = ctx.theater;
+      this.pictureKey = '';
+    }
+    const tq = Math.round(ctx.frame.t * 4) / 4;
+    const key = `${ctx.perceived.side}|${tq}`;
+    if (key !== this.pictureKey) {
+      this.picture = commanderPicture(this.replay, this.tracks, ctx.perceived.side, ctx.theater, tq, this.pack.meta.ftl_speed_c.value ?? 1);
+      this.pictureKey = key;
+    }
+    const sideName = this.replay.sides.find((x) => x.id === ctx.perceived.side)?.name ?? ctx.perceived.side;
+    if (ctx.perceived.enabled && this.picture.observer === null) this.notice = `No ${sideName} fleet is present in this theater`;
+    const ghost = !ctx.perceived.enabled;
+    for (const c of this.picture.contacts) {
+      const p = this.origin.point(c.observed);
+      const color = c.identity === 'unknown' ? PALETTE.inkDim : sideColor(this.replay, c.side);
+      this.unitCloud.push(p.x, p.y, p.z, rgbOf(color, ghost ? 0.55 : 1), 9, c.kind === 'fleet' ? 1 : 0);
+      const ally = c.side === this.replay.sides[0].id;
+      specs.push({ key: `contact:${c.id}`, cls: `contact ${ally ? 'allied' : 'hostile'}${ghost ? ' ghost' : ''}`, text: c.label, sub: `${ageText(c.age)}, ${c.identity}`, pos: p });
+    }
   }
 
   setPose(eyeKm: Vec3, targetKm: Vec3): void {
@@ -153,7 +190,7 @@ export class SystemView implements ScaleView {
   }
 
   status(): ViewStatus {
-    return { samplingText: null, scaleNote: 'Symbols are drawn at a fixed size. Orbits, limits and exclusions are to scale.', notice: null };
+    return { samplingText: null, scaleNote: 'Symbols are drawn at a fixed size. Orbits, limits and exclusions are to scale.', notice: this.notice };
   }
 
   dispose(): void {
