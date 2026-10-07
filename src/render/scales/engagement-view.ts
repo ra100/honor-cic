@@ -31,7 +31,7 @@ const WEDGE_UP = new Set([ShipStatus.Operational, ShipStatus.Degraded, ShipStatu
 
 export interface DrawCounts { ships: number; dots: number; lacDots: number; contacts: number; fx: number; wedges: number; links: number }
 
-const ageText = (s: number): string => (s < 60 ? `${s.toFixed(1)} s old` : `${fmtDuration(s)} old`);
+export const ageText = (s: number): string => (s < 60 ? `${s.toFixed(1)} s old` : `${fmtDuration(s)} old`);
 
 function firstAtOrAfter(beams: BeamEvent[], t: number): number {
   let lo = 0;
