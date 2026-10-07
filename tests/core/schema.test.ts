@@ -65,3 +65,13 @@ describe('parsePack', () => {
     expect(posToKm({ value: [0, 2, 0], unit: 'Mkm' })[1]).toBe(2_000_000);
   });
 });
+
+describe('unit presence', () => {
+  it('lets a LAC group leave the plot by being recovered aboard its carriers', () => {
+    const raw = miniPackRaw();
+    (raw.forces as Any).units[0].present = { from: null, from_via: null, until: 60, until_via: 'recovered' };
+    const r = parsePack(raw);
+    if (!r.ok) throw new Error(r.errors.join('\n'));
+    expect(r.pack.units[0].present.until_via).toBe('recovered');
+  });
+});
