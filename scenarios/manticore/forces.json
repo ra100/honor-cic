@@ -52,7 +52,7 @@
       "state": { "t": 1850, "place": { "relative_to": "second-fleet", "position": { "value": [-0.906308, -0.422618, 0], "unit": "Mkm" } },
         "velocity": { "relative_to": "second-fleet", "velocity_km_s": [47128.0, 21976.1, 0] }, "evidence": "W",
         "note": "closing at 52,000 km/s, over the 50,000 km/s the wiki gives; 1 Mkm out at t=1850 is S" },
-      "present": { "from": 600, "from_via": "launch", "until": null, "until_via": null },
+      "present": { "from": 600, "from_via": "launch", "until": 2400, "until_via": "recovered" },
       "evidence": "W", "source_id": "wiki-bom",
       "note": "2,300 LACs attacked Second Fleet's screen (W). The class split is S."
     },
