@@ -3,7 +3,7 @@
 Replays of Honorverse fleet battles, rebuilt from the novels and reference works. Every number in the app carries its evidence label.
 
 - **Three scales.** System shows stars, orbits, hyper limits and fleets. Engagement shows formations, sampled missile clouds, laserheads, wedges and Apollo links. Ship shows the class model to scale, with roll and pod demos.
-- **Director or free camera.** Each battle pack scripts its own shots. Drag the plot to take the camera, and press `D` to give it back.
+- **Director or free camera.** Each battle pack scripts its own shots. Drag the plot to take the camera, and press `D` to give it back. In free camera, **Follow** (`G`) keeps your angle and distance while the view moves with the selected fleet or the current engagement.
 - **Actual or perceived.** Show ground truth, or one commander's delayed sensor picture with contact ages and uncertainty rings.
 - **Missile density.** Choose 1:1 to 1:16. The readout always shows the ratio in use.
 - **CIC log, forces and inspector.** Ship status, lost subsystems, and the source behind every figure.

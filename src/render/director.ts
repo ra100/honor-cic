@@ -46,6 +46,29 @@ export function shotAt(shots: DirectorShot[], t: number): DirectorShot | null {
   return found;
 }
 
+/** Centre of the present units with these ids, at the frame time. */
+export function subjectCentroid(replay: Replay, frame: Frame, ids: string[]): Vec3 | null {
+  const set = new Set(ids);
+  return centroid(replay, frame, (i) => set.has(replay.units[i].id));
+}
+
+/**
+ * What the free camera follows: the selected ship's unit, else the current shot's subjects.
+ * In the perceived picture only the commander's own side, so following never reveals a true enemy position.
+ */
+export function followSubjects(replay: Replay, shots: DirectorShot[], t: number, selectedShip: number | null, perceivedSide: string | null): string[] {
+  const sel = selectedShip !== null ? replay.ships[selectedShip] : undefined;
+  let ids = sel ? [replay.units[sel.unit].id] : shotAt(shots, t)?.subject ?? [];
+  if (perceivedSide !== null) {
+    ids = ids.filter((id) => replay.units.find((u) => u.id === id)?.side === perceivedSide);
+    if (ids.length === 0) {
+      const own = replay.units.find((u) => u.side === perceivedSide && u.kind === 'fleet' && t >= u.tAppear && t < u.tDepart);
+      ids = own ? [own.id] : [];
+    }
+  }
+  return ids;
+}
+
 function centroid(replay: Replay, frame: Frame, pick: (i: number) => boolean): Vec3 | null {
   const c: Vec3 = [0, 0, 0];
   let n = 0;

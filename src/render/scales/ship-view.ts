@@ -236,6 +236,9 @@ export class ShipView implements ScaleView {
     this.fire.commit();
   }
 
+  /** The class model is local to the ship, so there is nothing to follow. */
+  followTarget(): void {}
+
   /** The ship view is a local model, so only the eye offset from the target matters. */
   setPose(eyeKm: Vec3, targetKm: Vec3): void {
     this.camera.position.set(toU(eyeKm[0] - targetKm[0]), toU(eyeKm[1] - targetKm[1]), toU(eyeKm[2] - targetKm[2]));

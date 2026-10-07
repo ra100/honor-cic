@@ -3,7 +3,7 @@ import { createFrame, sampleFrame } from '../../src/core/replay';
 import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
 import { dist } from '../../src/core/vec';
-import { CameraRig, directorPose, perceivedSubject, shotAt, shotsFor, type DirectorPose } from '../../src/render/director';
+import { CameraRig, directorPose, followSubjects, perceivedSubject, shotAt, shotsFor, subjectCentroid, type DirectorPose } from '../../src/render/director';
 import { getPack } from '../../src/registry';
 
 describe('director', () => {
@@ -41,6 +41,16 @@ describe('director', () => {
     expect(perceivedSubject(shots[0], null, false)).toBe(shots[0]);
     // No observer in the theater: hold the camera rather than aim it at true enemy positions.
     expect(perceivedSubject(shots[0], null, true)).toBeNull();
+  });
+
+  it('follows the selected ship\'s fleet, else the current engagement, and only the own fleet when perceived', () => {
+    const red = replay.ships.findIndex((x) => x.side === 'haven');
+    expect(followSubjects(replay, shots, 100, red, null)).toEqual(['tf-red']);
+    expect(followSubjects(replay, shots, 100, null, null)).toEqual(['tf-blue', 'tf-red']);
+    expect(followSubjects(replay, shots, 100, red, 'alliance')).toEqual(['tf-blue']);
+    const f = frameAt(100);
+    const c = subjectCentroid(replay, f, ['tf-blue', 'tf-red'])!;
+    expect(c[0]).toBeCloseTo(directorPose(shots[0], replay, f, true).target[0], 3);
   });
 
   it('eases toward a pose, and snaps on a cut', () => {

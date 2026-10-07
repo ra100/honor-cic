@@ -5,7 +5,7 @@ import { TECH } from '../../core/tech';
 import { formatIssues } from '../../core/validate';
 import { getPack } from '../../registry';
 import { observerUnit } from '../../core/perceived';
-import { CameraRig, directorPose, perceivedSubject, shotAt, shotsFor } from '../../render/director';
+import { CameraRig, directorPose, followSubjects, perceivedSubject, shotAt, shotsFor, subjectCentroid } from '../../render/director';
 import { Engine, webglAvailable } from '../../render/engine';
 import { LabelLayer } from '../../render/labels';
 import { EngagementView } from '../../render/scales/engagement-view';
@@ -16,7 +16,7 @@ import { clear, h } from '../dom';
 import { CATALOG_HREF } from '../router';
 import { createStore, type Store } from '../store';
 import { buildHud, type Live } from './hud';
-import { advance, eventIndex, initialState, perceivedSelection, phaseMarks, type ViewerState } from './model';
+import { advance, eventIndex, initialState, knownSide, perceivedSelection, phaseMarks, type ViewerState } from './model';
 
 declare global {
   interface Window { __honorCic?: { store: Store<ViewerState>; duration: number; view(): ScaleView | undefined } }
@@ -172,6 +172,10 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       views.get(s.scale)?.setPose(rig.eye, rig.target);
     } else {
       prevShot = null;
+      if (s.follow && s.scale !== 'ship') {
+        const c = subjectCentroid(replay, frame, followSubjects(replay, shots, s.t, s.selectedShip, knownSide(s)));
+        if (c) views.get(s.scale)?.followTarget(c);
+      }
     }
     prevT = s.t;
 
