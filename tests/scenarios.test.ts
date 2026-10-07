@@ -77,3 +77,19 @@ describe('scenario replays', () => {
     expect(final(r.ships.find((s) => s.name === 'RHNS Canonnade')!.idx)).toBe(ShipStatus.Escaped);
   }, 60_000);
 });
+
+describe('beam attack ranges (MTS §12.2 check 9)', () => {
+  it('flags a beam attack fired from beyond its stated range', () => {
+    const pack = getPack('manticore')!;
+    const moved = { ...pack, events: pack.events.map((e) => (e.type === 'beam_attack' && e.id === 'lac-shrike-grasers' ? { ...e, t: 600, until: 610 } : e)) };
+    const issues = validateReplay(moved, TECH, solve(moved, TECH)).filter((i) => i.check === 'geometry' && i.message.includes('lac-shrike-grasers'));
+    expect(issues.length).toBe(1);
+    expect(issues[0].severity).toBe('error');
+  }, 60_000);
+
+  it('Manticore: every beam attack is fired from within its stated range', () => {
+    const pack = getPack('manticore')!;
+    const issues = validateReplay(pack, TECH, solve(pack, TECH)).filter((i) => i.check === 'geometry' && i.message.includes('stated range'));
+    expect(formatIssues(issues)).toBe('');
+  }, 60_000);
+});
