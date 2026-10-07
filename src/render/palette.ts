@@ -19,7 +19,7 @@ export const STATUS_BRIGHTNESS: Record<ShipStatus, number> = {
 
 /** Terminal-phase missiles are bright enough to bloom; coasting ones are dim (their drive is off). */
 export const PHASE_BRIGHTNESS: Record<DrivePhase, number> = {
-  [DrivePhase.Boost]: 0.75, [DrivePhase.Coast]: 0.35, [DrivePhase.Terminal]: 1.6, [DrivePhase.Gone]: 0,
+  [DrivePhase.Boost]: 0.6, [DrivePhase.Coast]: 0.3, [DrivePhase.Terminal]: 1.05, [DrivePhase.Gone]: 0,
 };
 
 export function rgbOf(color: number, k: number): [number, number, number] {
