@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DOT_CAP, DotCache, packetSpreadKm, planDensity } from '../../src/render/density';
+import { DOT_CAP, DotCache, displaySpreadKm, packetSpreadKm, planDensity } from '../../src/render/density';
 
 describe('planDensity (MTS §11.3, Review Focus 4)', () => {
   it('draws one dot per N missiles at the chosen ratio', () => {
@@ -19,6 +19,10 @@ describe('planDensity (MTS §11.3, Review Focus 4)', () => {
   it('spreads young packets tightly and old ones wider, within a bound', () => {
     expect(packetSpreadKm(0)).toBeLessThan(packetSpreadKm(100));
     expect(packetSpreadKm(1e6)).toBe(20_000);
+  });
+  it('widens a packet so it stays visible from far away, never below its own spread', () => {
+    expect(displaySpreadKm(1_000, 6.5e7)).toBeGreaterThanOrEqual(0.005 * 6.5e7);
+    expect(displaySpreadKm(20_000, 1e5)).toBe(20_000);
   });
   it('places dots deterministically, so scrubbing never reshuffles them', () => {
     const a = new DotCache().offsets(42, 10);

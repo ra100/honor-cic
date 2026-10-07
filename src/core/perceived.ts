@@ -34,10 +34,10 @@ export function observerUnit(r: Replay, side: string, theater: string, t: number
 
 export interface CommanderPicture { observer: number | null; contacts: Contact[] }
 
+/** Everything the commander can know at t; their own fleet is included at zero age, everything else is delayed. */
 export function commanderPicture(r: Replay, tracks: Trackable[], side: string, theater: string, t: number, ftlC: number): CommanderPicture {
   const observer = observerUnit(r, side, theater, t);
   if (observer === null) return { observer, contacts: [] };
   const u = r.units[observer];
-  const others = tracks.filter((o) => o.id !== u.id);
-  return { observer, contacts: perceivedContacts((tt) => unitPosition(u, tt), others, t, ftlC) };
+  return { observer, contacts: perceivedContacts((tt) => unitPosition(u, tt), tracks, t, ftlC) };
 }

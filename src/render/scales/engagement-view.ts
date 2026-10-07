@@ -10,7 +10,7 @@ import { orientationAt } from '../../core/solver/geometry';
 import { bodyPosition, indexBodies } from '../../core/solver/orbits';
 import { fmtCount, fmtDistance, fmtDuration } from '../../core/units';
 import type { Vec3 } from '../../core/vec';
-import { DOT_CAP, DotCache, packetSpreadKm, planDensity } from '../density';
+import { DOT_CAP, DotCache, displaySpreadKm, packetSpreadKm, planDensity } from '../density';
 import type { LabelSpec } from '../labels';
 import { LineBatch } from '../lines';
 import { FloatingOrigin } from '../origin';
@@ -60,7 +60,8 @@ export class EngagementView implements ScaleView {
   private readonly origin = new FloatingOrigin(1);
   private readonly shipCloud: PointCloud;
   private readonly lacCloud: PointCloud;
-  private readonly dotCloud = new PointCloud(DOT_CAP, true);
+  // Alpha-blended: overlapping dots must not add up into bloom; only terminal-phase dots are bright enough to bloom.
+  private readonly dotCloud = new PointCloud(DOT_CAP);
   private readonly contactCloud = new PointCloud(8_192);
   private readonly flashCloud = new PointCloud(8_192, true);
   private readonly beamLines = new LineBatch(8_192, true);
@@ -231,16 +232,17 @@ export class EngagementView implements ScaleView {
         this.alive[i] = replay.units[p.toUnit].theater === ctx.theater ? frame.packetAlive[i] : 0;
       });
       const plan = planDensity(this.alive, ctx.density);
+      const viewKm = this.camera.position.distanceTo(this.controls?.target ?? new THREE.Vector3()) * this.origin.kmPerUnit;
       for (let i = 0; i < replay.packets.length; i++) {
         const n = plan.perPacket[i];
         if (n === 0) continue;
         const p = replay.packets[i];
         const off = this.cache.offsets(p.seed, n);
-        const spread = packetSpreadKm(frame.t - p.tLaunch) / this.origin.kmPerUnit;
+        const spread = displaySpreadKm(packetSpreadKm(frame.t - p.tLaunch), viewKm) / this.origin.kmPerUnit;
         const c = this.origin.point(frame.packetPos.subarray(i * 3, i * 3 + 3), this.v);
         const phase = frame.packetPhase[i] as DrivePhase;
         const rgb = rgbOf(this.sideRgb.get(p.side) ?? PALETTE.ink, PHASE_BRIGHTNESS[phase]);
-        const size = phase === DrivePhase.Terminal ? 3.5 : 2.5;
+        const size = phase === DrivePhase.Terminal ? 2.2 : 1.5;
         for (let k = 0; k < n; k++) {
           this.dotCloud.push(c.x + off[k * 3] * spread, c.y + off[k * 3 + 1] * spread, c.z + off[k * 3 + 2] * spread, rgb, size, 0);
         }

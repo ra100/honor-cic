@@ -27,6 +27,14 @@ describe('ShipView (Site B class viewer)', () => {
     expect(v.mountCount()).toEqual({ missile: 40, graser: 16 });
   });
 
+  it('always shows the stress bands and sidewalls, the subject of the class view, whatever the global protection layer says', () => {
+    const v = new ShipView(pack, replay, null);
+    const c = ctx({ selectedClass: 'saganami-c' });
+    c.layers.protection = false;
+    v.update(c);
+    expect(v.wedgeVisible()).toBe(true);
+  });
+
   it('follows the selected ship when no class is chosen', () => {
     const v = new ShipView(pack, replay, null);
     v.update(ctx({ selectedShip: replay.ships.findIndex((s) => s.side === 'haven') }));

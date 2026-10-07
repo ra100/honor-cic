@@ -3,7 +3,7 @@ import { createFrame, sampleFrame } from '../../src/core/replay';
 import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
 import { dist } from '../../src/core/vec';
-import { CameraRig, directorPose, shotAt, shotsFor, type DirectorPose } from '../../src/render/director';
+import { CameraRig, directorPose, perceivedSubject, shotAt, shotsFor, type DirectorPose } from '../../src/render/director';
 import { getPack } from '../../src/registry';
 
 describe('director', () => {
@@ -34,6 +34,11 @@ describe('director', () => {
     const p1 = directorPose(shots[0], replay, frameAt(60), false);
     expect(az(p1) - az(p0)).toBeCloseTo(4, 3);
     expect(az(directorPose(shots[0], replay, frameAt(60), true))).toBeCloseTo(az(p0), 6);
+  });
+
+  it("frames the commander's own fleet in the perceived picture, never an enemy's true position", () => {
+    expect(perceivedSubject(shots[0], 'tf-blue').subject).toEqual(['tf-blue']);
+    expect(perceivedSubject(shots[0], null)).toBe(shots[0]);
   });
 
   it('eases toward a pose, and snaps on a cut', () => {

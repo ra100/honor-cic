@@ -29,6 +29,11 @@ export function planDensity(alive: Uint32Array, ratio: number, cap = DOT_CAP): D
 /** Display-only spread of a packet's representative dots, km. S display aid, not a physical dispersion. */
 export const packetSpreadKm = (age: number): number => Math.min(20_000, 50 + 30 * Math.max(0, age));
 
+/** Share of the camera distance a packet cloud never shrinks below, so salvos read as clouds at fleet range (S display aid). */
+export const DISPLAY_SPREAD_FRACTION = 0.03;
+export const displaySpreadKm = (physicalKm: number, cameraDistanceKm: number): number =>
+  Math.max(physicalKm, cameraDistanceKm * DISPLAY_SPREAD_FRACTION);
+
 /** Stable unit-ball offsets per packet, so dots never reshuffle while scrubbing. */
 export class DotCache {
   private cache = new Map<number, Float32Array>();
