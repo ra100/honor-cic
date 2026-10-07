@@ -33,9 +33,10 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
   return shots;
 }
 
-/** In the perceived picture the camera follows the observer's own fleet, so framing never reveals where an enemy really is. */
-export function perceivedSubject(shot: DirectorShot, observerId: string | null): DirectorShot {
-  return observerId ? { ...shot, subject: [observerId] } : shot;
+/** In the perceived picture the camera follows the observer's own fleet; with no observer it holds (null), so framing never reveals where an enemy really is. */
+export function perceivedSubject(shot: DirectorShot, observerId: string | null, perceived: boolean): DirectorShot | null {
+  if (!perceived) return shot;
+  return observerId ? { ...shot, subject: [observerId] } : null;
 }
 
 /** The shot running at t; before the first shot starts, the first shot. */
