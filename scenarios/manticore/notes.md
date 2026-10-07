@@ -22,6 +22,7 @@ Missiles fly a narrative-calibrated classical profile:
 - Nothing is forced to arrive on time, and nothing exceeds c.
 
 ## Known conflicts and choices
+- **LAC strike timing (S)**: the dogfight is timed to when the swarms are within 150,000 km of each other (T+30:53 to T+30:57), and the Shrike graser pass to 75,000 km of Second Fleet (T+31:08 to T+31:10), both from the scenario's own geometry. The swarms close at over 50,000 km/s (W), so each pass lasts seconds.
 - **No fleet-wide defensive rolls**: a wall of battle firing its own salvos keeps its broadside to the enemy. An earlier draft rolled Home Fleet and Fifth Fleet 90° before the missiles arrived; with the wedge then facing the threat every leaker struck the stress band, which contradicts the canon losses. Rolls stay available for ships and smaller scenarios.
 - **Missile lethality (calibration, S)**: `hit_fraction` is 0.09 for the Mk23 and Mk16 and 0.075 for the Havenite MDM. With these, mechanistic damage knocks out about 109 of Second Fleet's 240 SD(P) under Home Fleet's 150,000 missiles (canon: 97 destroyed and 19 mission kills), destroys all of Home Fleet and Third Fleet, and leaves Fifth Fleet intact until the Apollo strike.
 - **Havenite defense preset (calibration, S)**: 5 counter-missile waves at Pk 0.62 and 7 point-defense shots at Pk 0.58 per mount. Fifth Fleet then stops 28% of the Apollo strike (canon: about 30%).
