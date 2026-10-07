@@ -3,6 +3,8 @@ import { podArithmetic, allSourceValues } from '../tech';
 import { gToKmS2, kmS2ToG, kmToLm, kmToMkm, lmToKm, mkmToKm, type Unit } from '../units';
 import { ejectRate, firePlans, launcherTubes, magazineTotal, podCapacity } from './forces';
 import { issue, type Issue, type StaticCheck } from './types';
+import { bodyPosition, indexBodies, orbitPolyline } from '../solver/orbits';
+import { dist } from '../vec';
 
 const FIELD_UNITS: Record<string, readonly Unit[]> = {
   radius: ['km', 'Mkm', 'LM', 'm'], hyper_limit: ['km', 'Mkm', 'LM'], exclusion: ['km', 'Mkm', 'LM'],
@@ -246,9 +248,52 @@ const eraCheck: StaticCheck = ({ pack, tech }) => {
   return out;
 };
 
+/** MTS §12.2 check 2, positional part: children stay at their orbit radius around their own parent. */
+const framesPositionCheck: StaticCheck = ({ pack }) => {
+  const out: Issue[] = [];
+  const idx = indexBodies(pack.bodies);
+  for (const b of pack.bodies) {
+    if (!b.orbit || b.parent_id === null || b.kind === 'belt') continue;
+    const r = baseValue(b.orbit.radius);
+    if (r === null) continue;
+    for (const t of [0, pack.meta.duration_s / 2, pack.meta.duration_s]) {
+      const d = dist(bodyPosition(idx, b.id, t), bodyPosition(idx, b.parent_id, t));
+      if (Math.abs(d - r) > 1e-9 * r + 1e-6) {
+        out.push(issue('frames', 'error', `${b.name} drifts from its parent frame: ${d} km vs orbit ${r} km at t=${t}`, `bodies.${b.id}`));
+        break;
+      }
+    }
+  }
+  return out;
+};
+
+/** MTS §12.2 check 3: body and orbit overlay come from the same transform. */
+const projectionCheck: StaticCheck = ({ pack }) => {
+  const out: Issue[] = [];
+  const idx = indexBodies(pack.bodies);
+  const n = 1024;
+  for (const b of pack.bodies) {
+    if (!b.orbit || b.parent_id === null || b.kind === 'belt') continue;
+    const r = baseValue(b.orbit.radius);
+    if (!r) continue;
+    const sagitta = r * (1 - Math.cos(Math.PI / n));
+    for (const t of [0, pack.meta.duration_s]) {
+      const p = bodyPosition(idx, b.id, t);
+      const nearest = Math.min(...orbitPolyline(idx, b.id, t, n).map((q) => dist(p, q)));
+      if (nearest > 2 * Math.PI * r / n + sagitta) {
+        out.push(issue('projection', 'error', `${b.name} sits ${nearest.toFixed(0)} km off its drawn orbit at t=${t}`, `bodies.${b.id}`));
+        break;
+      }
+    }
+  }
+  return out;
+};
+
 export const STATIC_CHECKS: StaticCheck[] = [
   unitsCheck,
   framesStructureCheck,
+  framesPositionCheck,
+  projectionCheck,
   epochCheck,
   weaponsCheck,
   inventoryCheck,
