@@ -116,7 +116,7 @@ const FormationZ = z.object({
 }).strict();
 const PresentZ = z.object({
   from: TimeRefZ.nullable(), from_via: z.enum(['hyper', 'junction', 'launch']).nullable(),
-  until: TimeRefZ.nullable(), until_via: z.enum(['hyper', 'junction']).nullable(),
+  until: TimeRefZ.nullable(), until_via: z.enum(['hyper', 'junction', 'recovered']).nullable(),
 }).strict();
 const unitCommon = {
   id: Id, name: z.string(), side: z.string(), theater: z.string(),
