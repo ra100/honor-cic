@@ -13,6 +13,10 @@ function walk(dir: string): string[] {
 const core = walk('src/core');
 
 describe('architecture', () => {
+  it('has the core layer', () => {
+    expect(core.length).toBeGreaterThan(0);
+  });
+
   it('keeps src/core free of render, ui, three and DOM access', () => {
     const banned = /from ['"](\.\.\/)+(render|ui)\/|from ['"]three|\bdocument\.|\bwindow\./;
     expect(core.filter((f) => banned.test(readFileSync(f, 'utf8')))).toEqual([]);
