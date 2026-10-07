@@ -37,7 +37,7 @@ const SCALES: Array<{ id: ScaleId; label: string }> = [
 ];
 const KEYS: Array<[string, string]> = [
   ['Space', 'Play or pause'], ['← →', 'Step 1 s, with Shift 60 s'], ['[ ]', 'Previous or next phase'],
-  ['+ −', 'Faster or slower'], ['1 2 3', 'System, Engagement or Ship scale'], ['D', 'Director camera'], ['F', 'Free camera'],
+  ['+ −', 'Faster or slower'], ['1 2 3', 'System, Engagement or Ship scale'], ['D', 'Director camera'], ['F', 'Free camera'], ['G', 'Follow the selected fleet or the current engagement'],
   ['P', 'Switch between Actual and Perceived'], ['Esc', 'Close menus, then clear the selection'], ['?', 'This help'],
 ];
 const speedText = (s: number): string => (s === 0.25 ? '¼×' : s === 0.5 ? '½×' : `${s}×`);
@@ -72,6 +72,7 @@ export function buildHud(d: HudDeps): Hud {
   const clock = h('div', { class: 'clock', 'aria-label': 'Battle clock' });
   const director = h('button', { class: 'btn', type: 'button', 'aria-pressed': 'false', title: 'Director camera (D)', disabled: d.shots.length === 0, onclick: () => set({ camera: 'director' }) }, 'Director');
   const free = h('button', { class: 'btn', type: 'button', 'aria-pressed': 'false', title: 'Free camera (F)', onclick: () => set({ camera: 'free' }) }, 'Free');
+  const follow = h('button', { class: 'btn', type: 'button', 'aria-pressed': 'false', title: 'Free camera follows the selected fleet or the current engagement (G)', onclick: () => set({ follow: !store.get().follow }) }, 'Follow');
   const theater = pack.meta.theaters.length > 1
     ? h('select', { 'aria-label': 'Theater', onchange: () => set({ theater: theater!.value, camera: 'free' }) }, pack.meta.theaters.map((t) => h('option', { value: t.id }, t.label)))
     : null;
@@ -110,7 +111,7 @@ export function buildHud(d: HudDeps): Hud {
     h('h1', { class: 'title' }, pack.meta.title),
     h('div', { class: 'tabs', role: 'tablist', 'aria-label': 'Scale' }, tabs),
     clock,
-    h('div', { class: 'group', role: 'group', 'aria-label': 'Camera' }, director, free,
+    h('div', { class: 'group', role: 'group', 'aria-label': 'Camera' }, director, free, follow,
       h('button', { class: 'btn optional', type: 'button', onclick: d.onResetView }, 'Reset view'),
       h('button', { class: 'btn optional', type: 'button', onclick: d.onFullscreen }, 'Fullscreen')),
     theater,
@@ -238,6 +239,7 @@ export function buildHud(d: HudDeps): Hud {
       case '1': case '2': case '3': set({ scale: SCALES[Number(e.key) - 1].id, camera: 'free' }); break;
       case 'd': case 'D': if (d.shots.length) set({ camera: 'director' }); break;
       case 'f': case 'F': set({ camera: 'free' }); break;
+      case 'g': case 'G': set({ follow: !s.follow }); break;
       case 'p': case 'P': set({ perceived: { ...s.perceived, enabled: !s.perceived.enabled } }); break;
       case '?': helpDlg.showModal(); break;
     }
@@ -275,6 +277,8 @@ export function buildHud(d: HudDeps): Hud {
       tabs.forEach((b, i) => setAttr(b, 'aria-selected', String(SCALES[i].id === s.scale)));
       setAttr(director, 'aria-pressed', String(s.camera === 'director'));
       setAttr(free, 'aria-pressed', String(s.camera === 'free'));
+      setAttr(follow, 'aria-pressed', String(s.follow));
+      follow.disabled = s.camera !== 'free' || s.scale === 'ship';
       if (theater && theater.value !== s.theater) theater.value = s.theater;
       for (const [id, btn] of Object.entries(menuButtons)) setAttr(btn!, 'aria-expanded', String(s.menu === id));
       for (const [id, el] of Object.entries(menus)) el!.hidden = s.menu !== id;

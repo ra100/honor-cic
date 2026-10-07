@@ -63,6 +63,16 @@ describe('EngagementView', () => {
     expect(v.drawCounts().wedges).toBe(replay.ships.length);
   });
 
+  it('keeps the user\'s viewing angle and distance while it follows a moving target', () => {
+    const v = new EngagementView(pack, replay, null);
+    v.update(ctx(0));
+    v.setPose([0, -50_000, 20_000], [0, 0, 0]);
+    const before = v.camera.position.clone();
+    v.followTarget([1_000_000, 0, 0]);
+    expect(v.camera.position.distanceTo(before)).toBeLessThan(1e-6);
+    expect(Array.from(v.toRender([1_000_000, 0, 0]).toArray())).toEqual([0, 0, 0]);
+  });
+
   it('picks a ship under the pointer', () => {
     const v = new EngagementView(pack, replay, null);
     v.update(ctx(0));

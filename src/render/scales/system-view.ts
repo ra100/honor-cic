@@ -174,6 +174,14 @@ export class SystemView implements ScaleView {
     }
   }
 
+  followTarget(targetKm: Vec3): void {
+    const look = this.controls?.target ?? new THREE.Vector3();
+    const offset = this.camera.position.clone().sub(look);
+    const target = this.origin.point(targetKm);
+    this.camera.position.copy(target).add(offset);
+    this.controls?.target.copy(target);
+  }
+
   setPose(eyeKm: Vec3, targetKm: Vec3): void {
     const target = this.origin.point(targetKm);
     this.camera.position.copy(this.origin.point(eyeKm));
