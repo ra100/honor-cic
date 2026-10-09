@@ -6,6 +6,7 @@ import {
 import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import { fmtCount } from '../../core/units';
+import type { ShipFraming } from '../../render/framing';
 import type { ShipDemo } from '../../render/scales/ship-view';
 import type { LayerId, ScaleId } from '../../render/scales/types';
 import { logLine } from '../format';
@@ -32,12 +33,15 @@ export interface ViewerState {
   density: number;
   selectedShip: number | null;
   selectedClass: string | null;
+  shipFraming: ShipFraming;
+  shipReplay: boolean;
   logSide: string;
   demo: ShipDemo;
   demoProgress: number;
   reducedMotion: boolean;
-  drawer: 'none' | 'forces' | 'log';
-  menu: 'none' | 'layers' | 'view' | 'density' | 'shots';
+  motionOverride: boolean | null;
+  drawer: 'none' | 'forces' | 'log' | 'inspector';
+  menu: 'none' | 'layers' | 'view' | 'density' | 'shots' | 'controls';
 }
 
 export function initialState(pack: ScenarioPack, reducedMotion: boolean): ViewerState {
@@ -46,8 +50,29 @@ export function initialState(pack: ScenarioPack, reducedMotion: boolean): Viewer
     t: 0, playing: false, speed: 'auto', scale: hasShots ? pack.meta.shots[0].scale : 'engagement', camera: hasShots ? 'director' : 'free', follow: true,
     theater: hasShots ? pack.meta.shots[0].theater : pack.meta.theaters[0].id, layers: { ...DEFAULT_LAYERS },
     perceived: { enabled: false, side: pack.meta.sides[0].id }, density: 4, selectedShip: null, selectedClass: null,
-    logSide: 'all', demo: 'none', demoProgress: 0, reducedMotion, drawer: 'none', menu: 'none',
+    shipFraming: 'hull', shipReplay: false, logSide: 'all', demo: 'none', demoProgress: 0,
+    reducedMotion, motionOverride: null, drawer: 'none', menu: 'none',
   };
+}
+
+export function scaleSelection(scale: ScaleId): Partial<ViewerState> {
+  return { scale, camera: 'free', drawer: 'none', menu: 'none', demo: 'none' };
+}
+
+export function composition(s: Pick<ViewerState, 'scale' | 'shipReplay'>): {
+  battle: boolean; engagement: boolean; system: boolean; ship: boolean; transport: boolean;
+} {
+  return {
+    battle: s.scale !== 'ship', engagement: s.scale === 'engagement', system: s.scale === 'system',
+    ship: s.scale === 'ship', transport: s.scale !== 'ship' || s.shipReplay,
+  };
+}
+
+export function shipClassId(r: Replay, s: Pick<ViewerState, 'selectedShip' | 'selectedClass'>): string | null {
+  return s.selectedClass
+    ?? (s.selectedShip !== null ? r.ships[s.selectedShip]?.classId : null)
+    ?? (r.ships.find((sh) => sh.flagship && sh.side === r.sides[0]?.id) ?? r.ships[0])?.classId
+    ?? null;
 }
 
 export interface EventIndex { times: Float64Array }
@@ -82,9 +107,9 @@ export function autoSpeed(ix: EventIndex, t: number): number {
   return 240;
 }
 
-export function advance(s: ViewerState, dtWall: number, ix: EventIndex, duration: number): { t: number; playing: boolean } {
+export function advance(s: ViewerState, dtWall: number, ix: EventIndex, duration: number, directorRate: number | null = null): { t: number; playing: boolean } {
   if (!s.playing) return { t: s.t, playing: false };
-  const rate = s.speed === 'auto' ? autoSpeed(ix, s.t) : s.speed;
+  const rate = s.speed === 'auto' ? (s.camera === 'director' ? directorRate : null) ?? autoSpeed(ix, s.t) : s.speed;
   const t = Math.min(duration, s.t + Math.min(dtWall, 0.25) * rate);
   return { t, playing: t < duration };
 }

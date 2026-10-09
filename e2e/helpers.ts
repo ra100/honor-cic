@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 /** Collects page errors and console errors so each test can assert a clean run. */
 export function watchErrors(page: Page): string[] {
@@ -17,4 +17,10 @@ export async function stubFonts(page: Page): Promise<void> {
 export async function openBattle(page: Page, id: string): Promise<void> {
   await page.goto(`/#/battle/${id}`);
   await page.locator('.viewer').waitFor({ state: 'visible', timeout: 90_000 });
+}
+
+export async function openControls(page: Page): Promise<void> {
+  const button = page.getByRole('button', { name: 'Controls', exact: true });
+  if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
+  await expect(page.locator('#menu-controls')).toBeVisible();
 }

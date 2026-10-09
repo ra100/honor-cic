@@ -4,6 +4,7 @@ import type { Frame, Replay } from '../../core/replay';
 import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import type { Vec3 } from '../../core/vec';
+import type { PlotInsets, ShipFraming } from '../framing';
 import type { LabelSpec } from '../labels';
 
 export type ScaleId = 'system' | 'engagement' | 'ship';
@@ -33,6 +34,8 @@ export interface ViewContext {
   selectedShip: number | null;
   selectedClass: string | null;
   reducedMotion: boolean;
+  plotInsets?: PlotInsets;
+  shipFraming?: ShipFraming;
 }
 
 export interface ViewStatus {

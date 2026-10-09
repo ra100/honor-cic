@@ -15,6 +15,8 @@ function countDots(alive: Uint32Array, ratio: number): number {
 export function planDensity(alive: Uint32Array, ratio: number, cap = DOT_CAP): DensityPlan {
   let total = 0;
   for (let i = 0; i < alive.length; i++) total += alive[i];
+  ratio = Number.isFinite(ratio) ? Math.max(1, Math.round(ratio)) : 1;
+  cap = Number.isFinite(cap) ? Math.max(1, Math.floor(cap)) : DOT_CAP;
   let effectiveRatio = ratio;
   let dots = countDots(alive, effectiveRatio);
   while (dots > cap) {
@@ -30,7 +32,7 @@ export function planDensity(alive: Uint32Array, ratio: number, cap = DOT_CAP): D
 export const packetSpreadKm = (age: number): number => Math.min(20_000, 50 + 30 * Math.max(0, age));
 
 /** Share of the camera distance a packet cloud never shrinks below, so salvos read as clouds at fleet range (S display aid). */
-export const DISPLAY_SPREAD_FRACTION = 0.03;
+export const DISPLAY_SPREAD_FRACTION = 0.0075;
 export const displaySpreadKm = (physicalKm: number, cameraDistanceKm: number): number =>
   Math.max(physicalKm, cameraDistanceKm * DISPLAY_SPREAD_FRACTION);
 

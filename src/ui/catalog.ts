@@ -65,7 +65,7 @@ export function renderCatalog(root: HTMLElement, entries: CatalogEntry[]): void 
       h('header', { class: 'catalog-head' },
         h('p', { class: 'wordmark' }, 'honor-cic'),
         h('h1', null, 'Honorverse battle replays'),
-        h('p', { class: 'lede' }, 'Fleet actions rebuilt from the novels and reference works. Every number carries its evidence: P primary, W wiki, D derived, S speculative.')),
+        h('p', { class: 'lede' }, 'Canon fleet-action reconstructions and a non-canon Training example. Every number carries its evidence: P primary, W wiki, D derived, S speculative.')),
       cards.length === 0
         ? h('section', { class: 'panel state' }, h('p', null, EMPTY_CATALOG_TEXT))
         : h('ol', { class: 'cards' }, cards.map(cardEl))),
