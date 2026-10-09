@@ -8,10 +8,11 @@ import type { Trackable } from '../../core/sensors';
 import { bodyPosition, indexBodies, orbitPolyline } from '../../core/solver/orbits';
 import { fmtCount, fmtDistance, LM_KM } from '../../core/units';
 import type { Vec3 } from '../../core/vec';
+import { applyPlotInsets, plotDistanceScale, plotSize } from '../framing';
 import type { LabelSpec } from '../labels';
 import { FloatingOrigin } from '../origin';
-import { PALETTE, rgbOf, sideColor } from '../palette';
-import { PointCloud } from '../points';
+import { CELESTIAL_HALO_GAIN, PALETTE, rgbOf, sideColor } from '../palette';
+import { PointCloud, SHAPE } from '../points';
 import { ageText } from './engagement-view';
 import type { ScaleView, ViewContext, ViewStatus } from './types';
 
@@ -25,22 +26,27 @@ export class SystemView implements ScaleView {
   readonly controls: OrbitControls | null;
   private readonly origin = new FloatingOrigin(KM_PER_UNIT);
   private readonly index;
-  private readonly bodyCloud = new PointCloud(128, true);
+  private readonly bodyCloud = new PointCloud(128);
+  private readonly bodyGlow = new PointCloud(128, true);
   private readonly unitCloud = new PointCloud(128);
   private readonly staticLines = new THREE.Group();
   private staticLabels: LabelSpec[] = [];
   private specs: LabelSpec[] = [];
   private framed = false;
+  private posePending = false;
+  private plotScale = 1;
+  private readonly look = new THREE.Vector3();
   private tracks: Trackable[] = [];
   private tracksTheater: string | null = null;
   private picture: CommanderPicture = { observer: null, contacts: [] };
   private pictureKey = '';
   private notice: string | null = null;
 
-  constructor(private readonly pack: ScenarioPack, private readonly replay: Replay, dom: HTMLElement | null) {
+  constructor(private readonly pack: ScenarioPack, private readonly replay: Replay, private readonly dom: HTMLElement | null) {
     this.index = indexBodies(pack.bodies);
     this.camera.up.set(0, 0, 1);
-    this.scene.add(this.staticLines, this.bodyCloud.points, this.unitCloud.points);
+    this.scene.background = new THREE.Color(PALETTE.void);
+    this.scene.add(this.staticLines, this.bodyGlow.points, this.bodyCloud.points, this.unitCloud.points);
     this.controls = dom ? new OrbitControls(this.camera, dom) : null;
     if (this.controls) this.controls.enableDamping = true;
     this.buildStatic();
@@ -103,8 +109,26 @@ export class SystemView implements ScaleView {
 
   update(ctx: ViewContext): void {
     const t = ctx.frame.t;
+    const { width, height } = plotSize(this.dom, this.camera.aspect);
+    applyPlotInsets(this.camera, width, height, ctx.plotInsets);
+    const scale = plotDistanceScale(this.camera, width, height, ctx.plotInsets);
+    const externalPose = this.posePending;
+    if (!this.framed && !externalPose) {
+      const anchor = ctx.pack.meta.theaters.find((th) => th.id === ctx.theater)?.anchor_body ?? ctx.pack.meta.frame.origin_body;
+      const target = bodyPosition(this.index, anchor, t);
+      const d = 45 * LM_KM;
+      this.setPose([target[0] - d * 0.35, target[1] - d, target[2] + d * 0.55], target);
+    }
+    if (externalPose || !this.framed || scale !== this.plotScale) {
+      const target = this.controls?.target ?? this.look;
+      this.camera.position.sub(target).multiplyScalar(externalPose || !this.framed ? scale : scale / this.plotScale).add(target);
+    }
+    this.framed = true;
+    this.posePending = false;
+    this.plotScale = scale;
     this.staticLines.visible = ctx.layers.celestial;
     this.bodyCloud.begin();
+    this.bodyGlow.begin();
     this.unitCloud.begin();
     const specs: LabelSpec[] = ctx.layers.celestial ? [...this.staticLabels] : [];
 
@@ -113,11 +137,12 @@ export class SystemView implements ScaleView {
         if (b.kind === 'belt') continue;
         const p = this.origin.point(bodyPosition(this.index, b.id, t));
         const look = b.kind === 'star'
-          ? { color: PALETTE.flash, k: 1.8, size: 14, cls: 'star' }
+          ? { color: PALETTE.flash, k: 0.95, size: 6, cls: 'star' }
           : b.kind === 'terminus'
-            ? { color: PALETTE.violet, k: 1.2, size: 10, cls: 'junction' }
+            ? { color: PALETTE.violet, k: 1, size: 9, cls: 'junction' }
             : { color: PALETTE.ink, k: 0.9, size: b.kind === 'station' ? 4 : 7, cls: 'planet' };
         this.bodyCloud.push(p.x, p.y, p.z, rgbOf(look.color, look.k), look.size, b.kind === 'station' ? 3 : 0);
+        if (b.kind === 'star' || b.kind === 'terminus') this.bodyGlow.push(p.x, p.y, p.z, rgbOf(look.color, 1.8 * CELESTIAL_HALO_GAIN), b.kind === 'star' ? 14 : 16, SHAPE.disc);
         if (b.kind !== 'station') specs.push({ key: `body:${b.id}`, cls: look.cls, text: b.name, sub: b.designation, pos: p });
       }
     }
@@ -128,7 +153,8 @@ export class SystemView implements ScaleView {
         if (!unitPresent(u, t) || ctx.frame.unitCount[i] === 0) return;
         const pv = this.origin.point(ctx.frame.unitPos.subarray(i * 3, i * 3 + 3));
         const n = ctx.frame.unitCount[i];
-        this.unitCloud.push(pv.x, pv.y, pv.z, rgbOf(sideColor(this.replay, u.side), 1), 8 + Math.log2(1 + n), u.kind === 'fleet' ? 1 : 0);
+        const carrier = u.shipIdx.some((s) => this.replay.ships[s].role === 'carrier');
+        this.unitCloud.push(pv.x, pv.y, pv.z, rgbOf(sideColor(this.replay, u.side), 1), Math.min(18, 8 + Math.log2(1 + n)), u.kind === 'lac' ? SHAPE.lac : carrier ? SHAPE.carrier : SHAPE.wall);
         const ally = u.side === this.replay.sides[0].id;
         specs.push({ key: `unit:${u.id}`, cls: `fleet ${ally ? 'allied' : 'hostile'}`, text: u.name, sub: `${fmtCount(n)} ${u.kind === 'lac' ? 'LACs' : 'ships'}`, pos: pv });
       });
@@ -136,17 +162,13 @@ export class SystemView implements ScaleView {
     if (ctx.perceived.enabled || ctx.layers.commander) this.drawContacts(ctx, specs);
 
     this.bodyCloud.commit();
+    this.bodyGlow.commit();
     this.unitCloud.commit();
     this.specs = specs;
 
-    if (!this.framed) {
-      this.framed = true;
-      const anchor = ctx.pack.meta.theaters.find((th) => th.id === ctx.theater)?.anchor_body ?? ctx.pack.meta.frame.origin_body;
-      const target = bodyPosition(this.index, anchor, t);
-      const d = 45 * LM_KM;
-      this.setPose([target[0] - d * 0.35, target[1] - d, target[2] + d * 0.55], target);
-    }
+    if (this.controls) this.controls.enableDamping = !ctx.reducedMotion;
     this.controls?.update();
+    this.camera.updateMatrixWorld();
   }
 
   /** Fleets as one commander knows them: delayed by light or the FTL sensor preset (MTS §7); packets are left to the engagement view. */
@@ -175,18 +197,24 @@ export class SystemView implements ScaleView {
   }
 
   followTarget(targetKm: Vec3): void {
-    const look = this.controls?.target ?? new THREE.Vector3();
+    const look = this.controls?.target ?? this.look;
     const offset = this.camera.position.clone().sub(look);
     const target = this.origin.point(targetKm);
     this.camera.position.copy(target).add(offset);
+    this.look.copy(target);
+    this.camera.lookAt(target);
     this.controls?.target.copy(target);
+    this.camera.updateMatrixWorld();
   }
 
   setPose(eyeKm: Vec3, targetKm: Vec3): void {
     const target = this.origin.point(targetKm);
     this.camera.position.copy(this.origin.point(eyeKm));
+    this.look.copy(target);
     this.camera.lookAt(target);
     this.controls?.target.copy(target);
+    this.camera.updateMatrixWorld();
+    this.posePending = true;
   }
 
   labels(): LabelSpec[] {

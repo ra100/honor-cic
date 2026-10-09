@@ -23,6 +23,29 @@ test('an unknown route offers the way back', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Honorverse battle replays' })).toBeVisible();
 });
 
+test('an unknown scenario shows an explicit error and returns to the catalog', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.goto('/#/battle/missing-pack');
+  await expect(page.getByRole('heading', { name: 'This replay could not be computed' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('No valid scenario pack has the id "missing-pack".');
+  await page.getByRole('link', { name: 'Back to catalog' }).click();
+  await expect(page.getByRole('heading', { name: 'Honorverse battle replays' })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('a failed viewer chunk shows recovery instead of a blank route', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.route('**/assets/viewer-*.js', (route) => route.abort('failed'));
+  await page.goto('/#/');
+  await page.locator('[data-pack="training"]').getByRole('link', { name: 'Open replay' }).click();
+  await expect(page.getByRole('heading', { name: 'The replay viewer could not load' })).toBeVisible();
+  await expect(page.getByRole('alert')).toContainText('Reload the page to retry');
+  await page.getByRole('link', { name: 'Back to catalog' }).click();
+  await expect(page.getByRole('heading', { name: 'Honorverse battle replays' })).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
 test('the catalog never scrolls sideways', async ({ page }) => {
   await page.goto('/#/');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

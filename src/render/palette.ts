@@ -17,11 +17,21 @@ export const STATUS_BRIGHTNESS: Record<ShipStatus, number> = {
   [ShipStatus.Destroyed]: 0.22, [ShipStatus.Escaped]: 0, [ShipStatus.Captured]: 0.6, [ShipStatus.Absent]: 0,
 };
 
-/** Terminal-phase missiles are bright enough to bloom; coasting ones are dim (their drive is off). */
+/** Drive phase controls head luminance, not the packet's physical count. */
 export const PHASE_BRIGHTNESS: Record<DrivePhase, number> = {
   [DrivePhase.Boost]: 0.6, [DrivePhase.Coast]: 0.3, [DrivePhase.Terminal]: 1.05, [DrivePhase.Gone]: 0,
 };
 
+const linearChannel = (v: number): number => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+export const MAX_EMISSION = 4;
+export const CELESTIAL_HALO_GAIN = 0.08;
+
+/** Vertex colours share Three's linear working space; hex tokens are sRGB. */
 export function rgbOf(color: number, k: number): [number, number, number] {
-  return [((color >> 16) & 255) / 255 * k, ((color >> 8) & 255) / 255 * k, (color & 255) / 255 * k];
+  const gain = Number.isFinite(k) ? Math.max(0, Math.min(MAX_EMISSION, k)) : 0;
+  return [
+    linearChannel(((color >> 16) & 255) / 255) * gain,
+    linearChannel(((color >> 8) & 255) / 255) * gain,
+    linearChannel((color & 255) / 255) * gain,
+  ];
 }

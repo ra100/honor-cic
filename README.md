@@ -1,12 +1,13 @@
 # honor-cic
 
-Replays of Honorverse fleet battles, rebuilt from the novels and reference works. Every number in the app carries its evidence label.
+Honorverse fleet-action reconstructions, plus a non-canon Training example. Every number in the app carries its evidence label.
 
-- **Three scales.** System shows stars, orbits, hyper limits and fleets. Engagement shows formations, sampled missile clouds, laserheads, wedges and Apollo links. Ship shows the class model to scale, with roll and pod demos.
+- **Three workspaces.** System keeps navigation and system context compact. Engagement keeps formations, sampled missile clouds, laserheads, wedges and Apollo links in the foreground, with forces, log and inspector opened only when needed. Ship is a class-inspection workspace with hull or defensive-envelope framing, class figures, and roll, pod and broadside demos. Its replay controls are opt-in. Compact plots retain identity, dimensions and active-demo labels; Class figures and sources keeps accelerations, all mount aspects, capacities and defensive dimensions accessible.
 - **Director or free camera.** Each battle pack scripts its own shots. Drag the plot to take the camera, and press `D` to give it back. In free camera, **Follow** (`G`) keeps your angle and distance while the view moves with the selected fleet or the current engagement.
 - **Actual or perceived.** Show ground truth, or one commander's delayed sensor picture with contact ages and uncertainty rings.
-- **Missile density.** Choose 1:1 to 1:16. The readout always shows the ratio in use.
+- **Missile density.** Engagement offers 1:1 to 1:16. The readout always shows the ratio in use. On narrower screens, theater, density and shots move into Controls.
 - **CIC log, forces and inspector.** Ship status, lost subsystems, and the source behind every figure.
+- **Motion and idle.** Paused plots redraw only after a control, resize or camera change; their drawing buffer stays available for repaints and captures. Active replay, demos and camera settling still animate. The live device reduced-motion setting is followed until you make an explicit choice in View; reduced-motion demos have a manual position slider.
 
 ## Quick start
 
@@ -36,8 +37,16 @@ flowchart LR
   R --> U["src/ui: catalog, viewer HUD"]
 ```
 
-- `src/core` never touches the DOM or three.js and never calls `Math.random`; `tests/architecture.test.ts` enforces this. Given a pack, the solver produces the same replay every time, and the renderer samples it as a pure function of time, so scrubbing is exact.
+- `src/core` never touches the DOM or three.js and never calls `Math.random`; `tests/architecture.test.ts` enforces this. Given a pack, the solver produces the same replay every time. Scrubbing samples that replay at the exact requested time. Engagement spreads individual ship glyphs around their true fleet centres for readability, labelled `formation spread [S]`; this display-only spacing changes no positions, counts, ranges or picking identities. Portrait starts frame the fleet separation vertically, with directional formation budgets that keep glyphs and neighboring fleets distinct.
 - Ship and missile figures come from the project's technical reference, `docs/honorverse-master-technical-specification.md` (cited in code as `MTS §n`).
+- The catalog loads without the plot renderer. Entering a battle loads the viewer, then computes the replay in a worker. Leaving the route cancels solving and disposes its controls, observers and rendering schedule; stale load or solve results cannot mount.
+- Director + Auto uses event-focused cinematic pacing. Manual speeds and Free + Auto keep their existing behavior.
+
+## Controls and accessibility
+
+The scale tabs have one Tab stop; Left/Right, Home and End change scales. Controls contains Director, Free, Follow, Reset view, Fullscreen, Notes and Help. Layers appears once. Escape closes contextual panels and menus and returns focus to their opener; Notes and Help use native dialogs.
+
+All controls have at least 44×44 CSS-pixel targets and visible cyan focus. Workspaces reflow at phone, intermediate and desktop widths, reserving the measured HUD footprint when framing the plot and placing labels. Sources also open by keyboard or tap. Notes format headings, lists, emphasis, code and HTTP(S) links; embedded HTML remains text.
 
 ## Evidence policy
 

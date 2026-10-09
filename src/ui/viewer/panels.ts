@@ -4,7 +4,7 @@ import type { TechRegistry } from '../../core/tech';
 import { clear, h } from '../dom';
 import { logLine } from '../format';
 import type { Store } from '../store';
-import { forcesModel, inspectorModel, logModel, logVisible, type ViewerState } from './model';
+import { forcesModel, inspectorModel, logModel, logVisible, scaleSelection, type ViewerState } from './model';
 
 const LOG_LIMIT = 300;
 
@@ -35,14 +35,13 @@ export class ForcesPanel {
     if (sig === this.sig) return;
     this.sig = sig;
     clear(this.el);
-    this.el.append(h('h2', { class: 'panel-title' }, 'Forces'));
     for (const side of sides) {
       this.el.append(h('p', { class: `side-head ${side.ally ? 'allied' : 'hostile'}` }, side.name));
       for (const u of side.units) {
         const theater = this.replay.units[u.idx].theater;
         this.el.append(
           h('div', { class: 'unit', 'data-unit': this.replay.units[u.idx].id },
-            h('h3', null, h('button', { type: 'button', onclick: () => this.store.set({ selectedShip: u.firstShip, theater }) }, u.name)),
+            h('h3', null, h('button', { type: 'button', onclick: () => this.store.set({ selectedShip: u.firstShip, selectedClass: null, theater, camera: 'free', drawer: u.firstShip === null ? 'forces' : 'inspector' }) }, u.name)),
             u.presence === 'arriving' ? h('p', { class: 'readout' }, 'Not in the system yet') : null,
             u.presence === 'departed' ? h('p', { class: 'readout' }, 'Departed') : null,
             u.lacText
@@ -65,9 +64,9 @@ export class LogPanel {
     this.filter = h('select', { 'aria-label': 'Show log entries for', onchange: () => store.set({ logSide: this.filter.value }) },
       h('option', { value: 'all' }, 'All sides'),
       replay.sides.map((s) => h('option', { value: s.id }, s.name)));
-    this.list = h('ol', { class: 'log-list', role: 'log', 'aria-live': 'off' });
+    this.list = h('ol', { class: 'log-list', role: 'log', 'aria-label': 'CIC log entries', 'aria-live': 'off', tabindex: '0' });
     this.el = h('section', { class: 'log panel', id: 'log', 'aria-label': 'CIC log' },
-      h('div', { class: 'transport-row' }, h('h2', { class: 'panel-title' }, 'CIC log'), this.filter),
+      h('div', { class: 'transport-row' }, this.filter),
       this.list);
   }
 
@@ -133,8 +132,8 @@ export class InspectorPanel {
       h('ul', { class: 'pips', 'aria-label': 'Subsystems' }, m.subsystems.map((s) => h('li', { class: s.ok ? 'sub-ok' : 'sub-lost' }, `${s.label}: ${s.text}`))),
       h('dl', { class: 'figs' }, m.figures.map((f) => [h('dt', null, f.label), h('dd', null, evButton(f.value, f.source))])),
       h('div', { class: 'group' },
-        h('button', { class: 'btn', type: 'button', onclick: () => this.store.set({ scale: 'ship', selectedClass: null, camera: 'free' }) }, 'Show class'),
-        h('button', { class: 'btn', type: 'button', onclick: () => this.store.set({ selectedShip: null }) }, 'Clear selection')),
+        h('button', { class: 'btn', type: 'button', onclick: () => this.store.set({ ...scaleSelection('ship'), selectedClass: null }) }, 'Show class'),
+        h('button', { class: 'btn', type: 'button', onclick: () => this.store.set({ selectedShip: null, drawer: 'none' }) }, 'Clear selection')),
     );
   }
 }
