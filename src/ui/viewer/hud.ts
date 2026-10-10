@@ -10,7 +10,7 @@ import { fmtClock } from '../format';
 import { renderNotes, safeNoteUrl } from '../notes';
 import { CATALOG_HREF } from '../router';
 import type { Store } from '../store';
-import { monthYear, phaseAt, phaseSpans, salvoTicks, shotNumbers, speedChip, tallies } from './hud-model';
+import { debrief, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies, type Debrief } from './hud-model';
 import { occupiedPlotInsets, type PlotOccupancy } from './layout';
 import { DENSITIES, knownSide, nextPhase, prevPhase, scaleSelection, shipClassId, SPEEDS, type PhaseMark, type Speed, type ViewerState } from './model';
 import { ForcesPanel, InspectorPanel, LogPanel, ShipPanel } from './panels';
@@ -27,7 +27,7 @@ export interface HudDeps {
   onLayoutChange(): void;
 }
 
-export interface Live { frame: Frame; samplingText: string | null; scaleNote: string; notice: string | null; rate?: number }
+export interface Live { frame: Frame; samplingText: string | null; scaleNote: string; notice: string | null; rate?: number; kmPerPx?: number | null }
 
 export interface Hud {
   root: HTMLElement;
@@ -143,6 +143,10 @@ export function buildHud(d: HudDeps): Hud {
   const shotDesc = h('div', { class: 'shot-desc' });
   const caption = h('div', { id: 'caption', class: 'hud' }, shotNo, shotName, shotDesc);
   const readout = h('div', { id: 'readout', class: 'hud num' });
+  const scaleBarLine = h('i', null);
+  const scaleBarText = h('span', null);
+  const scaleBarEl = h('div', { id: 'scalebar', class: 'hud', 'aria-hidden': 'true' }, scaleBarLine, scaleBarText);
+  let scaleBarWidth = '';
 
   // Site B context tools per scale.
   const stars = pack.bodies.filter((b) => b.kind === 'star');
@@ -281,8 +285,34 @@ export function buildHud(d: HudDeps): Hud {
     h('button', { class: 'tb', type: 'button', onclick: () => { set({ menu: 'none' }); notesDlg.showModal(); } }, 'Notes and sources'));
   const menus = { shots: shotsMenu, layers: layersMenu, key: keyMenu };
 
-  const root = h('div', { class: 'viewer' }, canvas, labels, notice, top, forces.el, side, shipPanel.el, context, readout, caption, hudToggles, transport,
-    Object.values(menus), notesDlg);
+  // Site A's after-action summary (JS:7597-7634), opened when playback reaches the end.
+  const debriefEl = h('section', { id: 'debrief', class: 'hud panel', 'aria-label': 'After-action summary' });
+  debriefEl.hidden = true;
+  let debriefData: Debrief | null = null;
+  const openDebrief = () => {
+    const db = (debriefData ??= debrief(pack, replay));
+
+    debriefEl.replaceChildren(
+      h('h2', null, `Engagement terminated · ${fmtClock(replay.duration_s)}`),
+      h('div', { class: 'dt' }, `${pack.meta.title}: after-action summary`),
+      h('table', null,
+        h('thead', null, h('tr', null, ...['Force', 'Strength', 'Destroyed', 'Crippled', 'Surrendered', 'Escaped'].map((x) => h('th', null, x)))),
+        h('tbody', null, ...db.rows.map((r) => h('tr', { class: r.ally ? 'a' : 'h' },
+          h('td', null, r.name, r.commander ? h('span', { class: 'cmd' }, r.commander) : null),
+          h('td', null, `${fmt(r.strength)}${r.kind === 'lac' ? ' LACs' : ''}`), h('td', null, fmt(r.destroyed)),
+          h('td', null, r.kind === 'lac' ? '' : fmt(r.crippled)), h('td', null, fmt(r.captured)),
+          h('td', null, r.kind === 'lac' ? '' : fmt(r.escaped)))))),
+      h('p', { class: 'help' },
+        `Missiles launched: ${db.launched.map((x) => `${x.name} ${fmt(x.n)}`).join(', ')}. `,
+        `Peak in space: ${fmt(db.peak.n)} at ${fmtClock(db.peak.t)}. Laserheads detonated: ${fmt(db.detonated)}.`),
+      h('div', { class: 'btns' },
+        h('button', { class: 'tb', type: 'button', onclick: () => { debriefEl.hidden = true; set({ camera: 'free' }); } }, 'Free look'),
+        h('button', { class: 'tb on', type: 'button', onclick: () => { debriefEl.hidden = true; set({ t: 0, playing: true, menu: 'none', ...(d.shots.length ? { camera: 'director' as const } : {}) }); } }, 'Replay')));
+    debriefEl.hidden = false;
+  };
+
+  const root = h('div', { class: 'viewer' }, canvas, labels, notice, top, forces.el, side, shipPanel.el, context, readout, scaleBarEl, caption, hudToggles, transport,
+    Object.values(menus), debriefEl, notesDlg);
 
   const layoutObserver = new ResizeObserver(d.onLayoutChange);
   for (const element of [top, transport, forces.el, side, shipPanel.el]) layoutObserver.observe(element);
@@ -293,7 +323,8 @@ export function buildHud(d: HudDeps): Hud {
     const s = store.get();
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (s.menu !== 'none' || s.drawer !== 'none') set({ menu: 'none', drawer: 'none' });
+      if (!debriefEl.hidden) debriefEl.hidden = true;
+      else if (s.menu !== 'none' || s.drawer !== 'none') set({ menu: 'none', drawer: 'none' });
       else set({ selectedShip: null });
       return;
     }
@@ -403,7 +434,14 @@ export function buildHud(d: HudDeps): Hud {
       }
       const readoutText = ship ? live.scaleNote : s.scale === 'engagement' ? live.samplingText ?? '' : '';
       setText(readout, readoutText);
-      readout.hidden = !readoutText || ship;
+      readout.hidden = !readoutText;
+      const bar = live.kmPerPx ? scaleBar(live.kmPerPx) : null;
+      scaleBarEl.hidden = !bar;
+      if (bar) {
+        const w = `${bar.widthPx}px`;
+        if (w !== scaleBarWidth) scaleBarLine.style.width = scaleBarWidth = w;
+        setText(scaleBarText, bar.label);
+      }
       // Context tools.
       contextSystem.hidden = s.scale !== 'system';
       contextBattle.hidden = s.scale !== 'engagement';
@@ -415,6 +453,9 @@ export function buildHud(d: HudDeps): Hud {
       toggleClass(podsBtn, 'active', s.shipPods);
       toggleClass(sailsBtn, 'active', s.shipSails);
       toggleClass(fireBtn, 'active', s.fireStartedAt !== null);
+      // Debrief: open when playback runs out, close once the replay leaves the end.
+      if (lastPlaying && !s.playing && t >= replay.duration_s - 1e-6) openDebrief();
+      else if (!debriefEl.hidden && t < replay.duration_s - 0.01) debriefEl.hidden = true;
       // Transport.
       if (lastPlaying !== s.playing) {
         lastPlaying = s.playing;

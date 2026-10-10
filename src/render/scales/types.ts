@@ -66,6 +66,8 @@ export interface ScaleView {
   readonly controls: OrbitControls | null;
   /** How the engine develops this view; the cinematic profile when absent. */
   readonly grade?: GradeProfile;
+  /** Physical km per scene unit, for the HUD scale bar; no scale bar when absent. */
+  readonly kmPerUnit?: number;
   /** True while view-owned animation (demos, pod drift, turntable) needs frames although the replay is paused. */
   animating?(): boolean;
   /** Call setPose before update: views draw relative to the pose's floating origin. */
