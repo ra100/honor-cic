@@ -71,6 +71,8 @@ export interface ScaleView {
   readonly kmPerUnit?: number;
   /** True while view-owned animation (demos, pod drift, turntable) needs frames although the replay is paused. */
   animating?(): boolean;
+  /** Called before the first update after the viewer switches to this view from another scale (or first shows it). */
+  onShow?(): void;
   /** Call setPose before update: views draw relative to the pose's floating origin. */
   update(ctx: ViewContext): void;
   /** Camera pose from physical km (director shots). */

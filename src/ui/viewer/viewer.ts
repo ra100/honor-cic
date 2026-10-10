@@ -205,6 +205,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
   hud.canvas.addEventListener('dblclick', onDoubleClick);
 
   let prevT = store.get().t;
+  let shownScale: ScaleId | null = null;
   let prevShot: { id: string; scale: string } | null = null;
   let live: Live = { frame, samplingText: null, scaleNote: '', notice: plotFailure };
   const renderScene = (dt: number): boolean => {
@@ -276,6 +277,10 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       // Compare rendered poses, not the unscaled director pose reapplied before each safe-area fit.
       const before = renderedCameras.get(view);
       if (view.controls) view.controls.dampingFactor = orbitDamping(dt);
+      if (shownScale !== s.scale) {
+        shownScale = s.scale;
+        scaleView.onShow?.();
+      }
       view.update(ctx);
       if (view.controls && before) cameraMoving = continueOrbitDamping(view.camera, view.controls, before, hud.canvas.clientHeight);
       if (view.controls) renderedCameras.set(view, snapshotCamera(view.camera, view.controls.target));
