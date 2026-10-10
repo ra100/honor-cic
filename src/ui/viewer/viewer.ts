@@ -192,8 +192,17 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     const hit = views.get(store.get().scale)?.pick(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
     if (hit !== null && hit !== undefined) store.set({ selectedShip: hit, selectedClass: null, menu: 'none' });
   };
+  // Site A: double-click a ship to follow it with the free camera.
+  const onDoubleClick = (e: MouseEvent) => {
+    const s = store.get();
+    if (s.scale === 'ship') return;
+    const r = hud.canvas.getBoundingClientRect();
+    const hit = views.get(s.scale)?.pick(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
+    if (hit !== null && hit !== undefined) store.set({ selectedShip: hit, selectedClass: null, camera: 'free', follow: true, menu: 'none' });
+  };
   hud.canvas.addEventListener('pointerdown', onPointerDown);
   hud.canvas.addEventListener('pointerup', onPointerUp);
+  hud.canvas.addEventListener('dblclick', onDoubleClick);
 
   let prevT = store.get().t;
   let prevShot: { id: string; scale: string } | null = null;
@@ -311,6 +320,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     ro.disconnect();
     hud.canvas.removeEventListener('pointerdown', onPointerDown);
     hud.canvas.removeEventListener('pointerup', onPointerUp);
+    hud.canvas.removeEventListener('dblclick', onDoubleClick);
     for (const v of views.values()) disposeView(v);
     labelLayer?.clear();
     engine?.dispose();
