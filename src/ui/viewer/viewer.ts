@@ -6,7 +6,7 @@ import { formatIssues } from '../../core/validate';
 import { dist } from '../../core/vec';
 import { getPack } from '../../registry';
 import { observerUnit } from '../../core/perceived';
-import { continueOrbitDamping, snapshotCamera, type CameraSnapshot } from '../../render/camera-motion';
+import { continueOrbitDamping, orbitDamping, snapshotCamera, type CameraSnapshot } from '../../render/camera-motion';
 import { CameraRig, directorPose, directorSpeed, followSubjects, perceivedSubject, shotAt, shotsFor, subjectCentroid } from '../../render/director';
 import { Engine, webglAvailable } from '../../render/engine';
 import { LabelLayer } from '../../render/labels';
@@ -275,6 +275,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       };
       // Compare rendered poses, not the unscaled director pose reapplied before each safe-area fit.
       const before = renderedCameras.get(view);
+      if (view.controls) view.controls.dampingFactor = orbitDamping(dt);
       view.update(ctx);
       if (view.controls && before) cameraMoving = continueOrbitDamping(view.camera, view.controls, before, hud.canvas.clientHeight);
       if (view.controls) renderedCameras.set(view, snapshotCamera(view.camera, view.controls.target));

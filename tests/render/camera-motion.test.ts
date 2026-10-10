@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { describe, expect, it } from 'vitest';
-import { continueOrbitDamping, snapshotCamera } from '../../src/render/camera-motion';
+import { continueOrbitDamping, orbitDamping, snapshotCamera } from '../../src/render/camera-motion';
 import { renderScheduler, type FrameClock } from '../../src/ui/viewer/scheduler';
 
 function orbit(radius: number) {
@@ -19,6 +19,32 @@ function orbit(radius: number) {
 }
 
 describe('projected camera damping', () => {
+  it('eases orbit input in the same wall time at any frame rate, as Site A\'s free camera does', () => {
+    expect(orbitDamping(1 / 60)).toBeCloseTo(1 - Math.exp(-9 / 60), 12);
+    expect(orbitDamping(0)).toBe(orbitDamping(1 / 60));
+    expect(orbitDamping(Number.NaN)).toBe(orbitDamping(1 / 60));
+    expect(orbitDamping(5)).toBe(orbitDamping(0.1));
+    const settle = (fps: number) => {
+      const { camera, controls, rotate } = orbit(1e7);
+      rotate();
+      let frames = 0;
+      let moving = true;
+      while (moving && frames < 10_000) {
+        const before = snapshotCamera(camera, controls.target);
+        controls.dampingFactor = orbitDamping(1 / fps);
+        controls.update();
+        moving = continueOrbitDamping(camera, controls, before, 800);
+        frames++;
+      }
+      return { seconds: frames / fps, at: camera.position.clone() };
+    };
+    const fast = settle(60), slow = settle(14);
+    expect(fast.seconds).toBeLessThan(1.5);
+    expect(slow.seconds).toBeLessThan(1.5);
+    expect(Math.abs(slow.seconds - fast.seconds)).toBeLessThan(0.3);
+    expect(slow.at.distanceTo(fast.at)).toBeLessThan(1e7 * 1e-6);
+  });
+
   it('settles at the same visible displacement for ship, System and kilometer-scale cameras', () => {
     const frames: number[] = [];
     const positions: THREE.Vector3[] = [];
