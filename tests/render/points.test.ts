@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { BLOOM, ensureVoidBackground } from '../../src/render/engine';
+import { LuminosityHighPassShader } from 'three/examples/jsm/shaders/LuminosityHighPassShader.js';
+import { CLEAR_COLOR } from '../../src/render/engine';
+import { clampBloomHighPass, GRADE_CINEMATIC, GRADE_SHADER } from '../../src/render/grade';
 import { shipGlyph } from '../../src/render/glyphs';
 import { CELESTIAL_HALO_GAIN, MAX_EMISSION, PALETTE, rgbOf } from '../../src/render/palette';
 import { MAX_SYMBOL_PX, PointCloud, SHAPE, setSpritePixelRatio } from '../../src/render/points';
@@ -16,17 +18,12 @@ describe('linear, bounded plot energy', () => {
     expect(rgbOf(PALETTE.flash, Infinity)).toEqual([0, 0, 0]);
   });
 
-  it('forces target-correct background clearing, preserving the intended void', () => {
-    const scene = new THREE.Scene();
-    ensureVoidBackground(scene);
-    expect((scene.background as THREE.Color).getHex(THREE.SRGBColorSpace)).toBe(PALETTE.void);
-    const staleScreenClear = new THREE.Color().setRGB(2 / 255, 2 / 255, 8 / 255, THREE.LinearSRGBColorSpace);
-    expect(staleScreenClear.getHex(THREE.SRGBColorSpace)).toBe(0x161632);
-    expect(scene.background).not.toEqual(staleScreenClear);
-    const explicit = new THREE.Color(0x080808);
-    scene.background = explicit;
-    ensureVoidBackground(scene);
-    expect(scene.background).toBe(explicit);
+  it('develops every frame through Site A grade: clamped bloom, exposure, ACES and gamma', () => {
+    expect(clampBloomHighPass(LuminosityHighPassShader.fragmentShader)).toContain('min( texture2D( tDiffuse, vUv ), vec4( 6.0 ) )');
+    expect(GRADE_CINEMATIC).toEqual({ exposure: 1.1, bloomStrength: 0.45, bloomRadius: 0.4, bloomThreshold: 1.1, vignette: 0.32 });
+    expect(GRADE_SHADER.fragmentShader).toContain('c = aces(c);');
+    expect(GRADE_SHADER.fragmentShader).toContain('pow(c, vec3(1.0 / 2.2))');
+    expect(CLEAR_COLOR).toBe(0x000003);
   });
 
   it('keeps radial celestial masks and intentional carrier squares, with low-energy halos', () => {
@@ -37,7 +34,6 @@ describe('linear, bounded plot energy', () => {
     expect(material.fragmentShader).toContain('clamp(vColor, 0.0, 4.0)');
     expect(material.uniforms.alphaGain.value).toBeLessThan(0.5);
     expect(CELESTIAL_HALO_GAIN).toBe(0.08);
-    expect(BLOOM.threshold).toBe(1);
   });
 });
 

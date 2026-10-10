@@ -13,7 +13,7 @@ describe('SystemView', () => {
   const ctx = (t: number): ViewContext => ({
     replay, pack, tech: TECH, frame: sampleFrame(replay, t, createFrame(replay)),
     layers: Object.fromEntries(LAYERS.map((l) => [l, true])) as ViewContext['layers'],
-    perceived: { enabled: false, side: 'alliance' }, density: 4, theater: 'range',
+    perceived: { enabled: false, side: 'alliance' }, density: 4, theater: 'range', focusSide: 'alliance', systemFocus: 'primary', ship: { roll: false, pods: true, sails: false, fireT: null },
     selectedShip: null, selectedClass: null, reducedMotion: false,
   });
   it('builds bodies, orbits and hyper limits from the pack', () => {

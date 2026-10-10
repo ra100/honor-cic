@@ -13,7 +13,7 @@ import { LabelLayer } from '../../render/labels';
 import { EngagementView } from '../../render/scales/engagement-view';
 import { ShipView } from '../../render/scales/ship-view';
 import { SystemView } from '../../render/scales/system-view';
-import type { ScaleId, ScaleView, ViewContext } from '../../render/scales/types';
+import { FIRE_DEMO_S, type ScaleId, type ScaleView, type ViewContext } from '../../render/scales/types';
 import { clear, h } from '../dom';
 import { CATALOG_HREF } from '../router';
 import { createStore, type Store } from '../store';
@@ -253,27 +253,35 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     live = { frame, samplingText: null, scaleNote: '', notice: actionFailure ?? plotFailure };
     const view = views.get(s.scale);
     let cameraMoving = false;
+    let viewAnimating = false;
     if (view && engine && labelLayer) {
       for (const [id, v] of views) if (v.controls) v.controls.enabled = id === s.scale;
       if (view instanceof ShipView) view.setDemo(s.demo, s.demoProgress);
+      const scaleView: ScaleView = view;
+      const fireT = s.fireStartedAt === null ? null : (performance.now() - s.fireStartedAt) / 1000;
+      if (fireT !== null && fireT > FIRE_DEMO_S) store.set({ fireStartedAt: null });
       const ctx: ViewContext = {
         replay, pack, tech: TECH, frame, layers: s.layers, perceived: s.perceived, density: s.density, theater: s.theater,
         selectedShip: s.selectedShip, selectedClass: s.selectedClass, reducedMotion: s.reducedMotion,
         plotInsets, shipFraming: s.shipFraming,
+        focusSide: s.perceived.enabled ? s.perceived.side : pack.meta.sides[0].id,
+        systemFocus: s.systemFocus,
+        ship: { roll: s.shipRoll, pods: s.shipPods, sails: s.shipSails, fireT: fireT !== null && fireT <= FIRE_DEMO_S ? fireT : null },
       };
       // Compare rendered poses, not the unscaled director pose reapplied before each safe-area fit.
       const before = renderedCameras.get(view);
       view.update(ctx);
       if (view.controls && before) cameraMoving = continueOrbitDamping(view.camera, view.controls, before, hud.canvas.clientHeight);
       if (view.controls) renderedCameras.set(view, snapshotCamera(view.camera, view.controls.target));
-      engine.render(view.scene, view.camera);
+      engine.render(view.scene, view.camera, scaleView.grade);
       rendered++;
       labelLayer.update(view.labels(), view.camera, hud.canvas.clientWidth, hud.canvas.clientHeight, plotInsets);
       const st = view.status();
       live = { frame, samplingText: st.samplingText, scaleNote: st.scaleNote, notice: actionFailure ?? st.notice };
+      viewAnimating = scaleView.animating?.() ?? false;
     }
     hud.render(s, live);
-    return continuousScene(s, directorMoving || cameraMoving);
+    return continuousScene(s, directorMoving || cameraMoving || viewAnimating);
   };
   const draw = (_now: number, dt: number): boolean => {
     drawing = true;

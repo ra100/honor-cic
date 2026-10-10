@@ -8,7 +8,7 @@ import type { TechRegistry } from '../../core/tech';
 import { fmtCount } from '../../core/units';
 import type { ShipFraming } from '../../render/framing';
 import type { ShipDemo } from '../../render/scales/ship-view';
-import type { LayerId, ScaleId } from '../../render/scales/types';
+import type { LayerId, ScaleId, SystemFocus } from '../../render/scales/types';
 import { logLine } from '../format';
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 15, 30, 60, 120, 240] as const;
@@ -38,6 +38,12 @@ export interface ViewerState {
   logSide: string;
   demo: ShipDemo;
   demoProgress: number;
+  systemFocus: SystemFocus;
+  shipRoll: boolean;
+  shipPods: boolean;
+  shipSails: boolean;
+  /** Wall-clock ms when the fire/defense demo started; null when idle. */
+  fireStartedAt: number | null;
   reducedMotion: boolean;
   motionOverride: boolean | null;
   drawer: 'none' | 'forces' | 'log' | 'inspector';
@@ -51,6 +57,7 @@ export function initialState(pack: ScenarioPack, reducedMotion: boolean): Viewer
     theater: hasShots ? pack.meta.shots[0].theater : pack.meta.theaters[0].id, layers: { ...DEFAULT_LAYERS },
     perceived: { enabled: false, side: pack.meta.sides[0].id }, density: 4, selectedShip: null, selectedClass: null,
     shipFraming: 'hull', shipReplay: false, logSide: 'all', demo: 'none', demoProgress: 0,
+    systemFocus: 'primary', shipRoll: false, shipPods: true, shipSails: false, fireStartedAt: null,
     reducedMotion, motionOverride: null, drawer: 'none', menu: 'none',
   };
 }
