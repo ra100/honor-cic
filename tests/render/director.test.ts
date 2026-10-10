@@ -4,6 +4,8 @@ import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
 import { dist } from '../../src/core/vec';
 import { CameraRig, directorPose, directorSpeed, followSubjects, perceivedSubject, shotAt, shotsFor, subjectCentroid, type DirectorPose } from '../../src/render/director';
+import { lacFront } from '../../src/core/solver/lac-wing';
+import { FORMATION_SCALE } from '../../src/render/formations';
 import { getPack } from '../../src/registry';
 
 describe('director', () => {
@@ -171,16 +173,33 @@ describe('scenario-driven close-range choreography', () => {
   });
 
   it('cuts closer for actual launch/encounter detail while retaining the physical subjects', () => {
+    const hf = replay.units.find((u) => u.id === 'hf-lacs')!;
+    const wing = FORMATION_SCALE * lacFront(hf.lacCount[0].count, hf.spacing);
     for (const t of [1854, 1869]) {
       const shot = shotAt(shots, t)!;
       const f = sampleFrame(replay, t, createFrame(replay));
       const pose = directorPose(shot, replay, f, false);
       expect(pose.target).toEqual(subjectCentroid(replay, f, shot.subject));
-      expect(dist(pose.eye, pose.target)).toBeLessThan(2_500_000);
+      // Within a few drawn wing radii: the wings pass through each other, so the shot holds both and nothing more.
+      expect(dist(pose.eye, pose.target)).toBeLessThan(3.2 * wing);
     }
     const podLaunch = shots.find((s) => s.id === 'apollo-launch')!;
     expect(podLaunch.kind).toBe('launch');
     expect(podLaunch.focus?.packets?.length).toBeGreaterThan(0);
+  });
+
+  it('frames LAC wings and fleets as the Engagement view draws them, four times life size', () => {
+    const halfView = (d: number) => d * Math.tan((22.5 * Math.PI) / 180);
+    const hf = replay.units.find((u) => u.id === 'hf-lacs')!;
+    const wing = FORMATION_SCALE * lacFront(hf.lacCount[0].count, hf.spacing);
+    for (const t of [1854, 1863, 1869]) {
+      const shot = shotAt(shots, t)!;
+      expect(shot.subject).toContain('hf-lacs');
+      const f = sampleFrame(replay, t, createFrame(replay));
+      const pose = directorPose(shot, replay, f, false);
+      // The drawn wing fits in the 45° view instead of filling it from a few thousand km away.
+      expect(halfView(dist(pose.eye, pose.target))).toBeGreaterThan(wing);
+    }
   });
 
   it('does not mutate scenario events, shot metadata or solved replay timestamps', () => {

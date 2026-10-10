@@ -1,50 +1,62 @@
+import { unitPresent, type Frame, type Replay } from '../core/replay';
+import { lacFront } from '../core/solver/lac-wing';
 import type { Vec3 } from '../core/vec';
 
-/** Clear space kept between neighbouring glyphs, CSS px. */
-export const GLYPH_GAP_PX = 3;
-/** A formation is never drawn more than this far from its centre, CSS px. */
-export const MAX_FORMATION_RADIUS_PX = 180;
-/** Nor more than this share of the way to the nearest other fleet, so neighbouring formations never interleave. */
+/**
+ * Every formation, LAC wings included, is drawn this many times larger than life about its true centre [S]: walls come out
+ * 1.5–2.2 Mkm wide, as in Site A, ships stay apart from a few Mkm out, and the size is the same for every fleet at every
+ * zoom, so zooming in brings a fleet closer instead of reshaping it.
+ */
+export const FORMATION_SCALE = 4;
+/** A fleet is never drawn more than this share of the way to the nearest other fleet, so formations never interleave. */
 export const NEIGHBOUR_SHARE = 0.42;
-
-/** Median distance from each formation slot to its nearest neighbour, km: the formation's own spacing. */
-export function slotSpacingKm(slots: readonly Vec3[]): number {
-  if (slots.length < 2) return 0;
-  const nearest = slots.map((a, i) => {
-    let best = Infinity;
-    for (let j = 0; j < slots.length; j++) {
-      if (j === i) continue;
-      const b = slots[j];
-      best = Math.min(best, Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]));
-    }
-    return best;
-  }).sort((a, b) => a - b);
-  return nearest[Math.floor(nearest.length / 2)];
-}
 
 export const slotRadiusKm = (slots: readonly Vec3[]): number => slots.reduce((r, s) => Math.max(r, Math.hypot(s[0], s[1], s[2])), 0);
 
-export interface SpreadInput {
-  /** Kilometres per CSS pixel at the camera's look distance. */
-  kmPerPx: number;
-  spacingKm: number;
-  radiusKm: number;
-  /** Largest glyph of the fleet plus the clear gap, CSS px. */
-  minGapPx: number;
-  /** Distance to the nearest other fleet in the theater; Infinity when alone. */
-  neighbourKm: number;
+/**
+ * How many times larger than life a fleet is drawn: FORMATION_SCALE, less when that would carry it past NEIGHBOUR_SHARE of
+ * the way to the nearest other fleet, and never smaller than life. Positions only: neither zoom nor view direction.
+ */
+export function formationScale(radiusKm: number, neighbourKm: number): number {
+  if (!(radiusKm > 0)) return 1;
+  const cap = Number.isFinite(neighbourKm) ? (NEIGHBOUR_SHARE * neighbourKm) / radiusKm : Infinity;
+  return Math.max(1, Math.min(FORMATION_SCALE, cap));
+}
+
+const RADII = new WeakMap<Replay, Float64Array>();
+
+/** Each unit's true formation radius, km: the reach of its ships' slots, or the front its LAC wing covers. */
+export function formationRadii(replay: Replay): Float64Array {
+  let radii = RADII.get(replay);
+  if (!radii) {
+    radii = Float64Array.from(replay.units, (u) => (u.kind === 'lac'
+      ? lacFront(u.lacCount[0]?.count ?? 0, u.spacing)
+      : slotRadiusKm(u.shipIdx.map((s) => replay.ships[s].slot))));
+    RADII.set(replay, radii);
+  }
+  return radii;
 }
 
 /**
- * How many times larger than life a fleet's 3D formation is drawn about its true centre [S]: enough for neighbouring
- * glyphs to stay apart at the camera's zoom, never more than MAX_FORMATION_RADIUS_PX across or NEIGHBOUR_SHARE of the way
- * to the next fleet, and never smaller than life. It depends on zoom and positions only, never on the view direction, so
- * orbiting turns the formation instead of reshaping it.
+ * How many times larger than life each unit is drawn at the frame time when the theater is shown: LAC wings always
+ * FORMATION_SCALE, each fleet of the theater formationScale against the nearest other fleet still fighting there,
+ * everything else 1. Shared by the Engagement view and the director, so the camera frames what is drawn.
  */
-export function formationSpread(i: SpreadInput): number {
-  if (!(i.spacingKm > 0) || !(i.radiusKm > 0) || !(i.kmPerPx > 0) || !Number.isFinite(i.kmPerPx)) return 1;
-  const readable = (i.minGapPx * i.kmPerPx) / i.spacingKm;
-  const radiusCap = (MAX_FORMATION_RADIUS_PX * i.kmPerPx) / i.radiusKm;
-  const neighbourCap = Number.isFinite(i.neighbourKm) ? (NEIGHBOUR_SHARE * i.neighbourKm) / i.radiusKm : Infinity;
-  return Math.max(1, Math.min(readable, radiusCap, neighbourCap));
+export function drawnScales(replay: Replay, frame: Frame, theater: string, radii: ArrayLike<number> = formationRadii(replay)): Float64Array {
+  const out = new Float64Array(replay.units.length).fill(1);
+  const fleets: number[] = [];
+  replay.units.forEach((u, i) => {
+    if (u.kind === 'lac') out[i] = FORMATION_SCALE;
+    else if (u.theater === theater && unitPresent(u, frame.t)) fleets.push(i);
+  });
+  const fighting = fleets.filter((i) => frame.unitCount[i] > 0);
+  const p = frame.unitPos;
+  for (const i of fleets) {
+    let neighbourKm = Infinity;
+    for (const j of fighting) {
+      if (j !== i) neighbourKm = Math.min(neighbourKm, Math.hypot(p[j * 3] - p[i * 3], p[j * 3 + 1] - p[i * 3 + 1], p[j * 3 + 2] - p[i * 3 + 2]));
+    }
+    out[i] = formationScale(radii[i], neighbourKm);
+  }
+  return out;
 }

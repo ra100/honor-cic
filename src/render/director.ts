@@ -4,6 +4,7 @@ import { bodyPosition, indexBodies } from '../core/solver/orbits';
 import { fmtCount, fmtDistance, fmtDuration } from '../core/units';
 import { dist, type Vec3 } from '../core/vec';
 import { packetSpreadKm } from './density';
+import { drawnScales, formationRadii } from './formations';
 import { beamTheatersFor } from './salvos';
 
 export type ShotKind = 'establish' | 'launch' | 'flight' | 'encounter' | 'impact' | 'aftermath';
@@ -264,22 +265,36 @@ export function directorPose(shot: DirectorShot, replay: Replay, frame: Frame, r
     [0, 0, 0];
   const points: Vec3[] = [];
   let displayRadius = 0;
+  // Frame what the Engagement view draws: formations and LAC wings at their display scale about their true centres.
+  const radii = formationRadii(replay);
+  const scales = drawnScales(replay, frame, shot.theater, radii);
+  const drawnShip = (ship: number): Vec3 => {
+    const u = replay.ships[ship].unit;
+    const k = scales[u];
+    const c = frame.unitPos.subarray(u * 3, u * 3 + 3);
+    const p = frame.shipPos.subarray(ship * 3, ship * 3 + 3);
+    return [c[0] + (p[0] - c[0]) * k, c[1] + (p[1] - c[1]) * k, c[2] + (p[2] - c[2]) * k];
+  };
+  // A drawn LAC wing is a disc about its centre: [centre, radius].
+  const discs: Array<[Vec3, number]> = [];
   replay.units.forEach((u, i) => {
     if (!subject.has(u.id)) return;
     const centre = Array.from(frame.unitPos.subarray(i * 3, i * 3 + 3)) as Vec3;
     points.push(centre);
-    if (u.kind === 'lac') displayRadius = Math.max(displayRadius, Math.min(30_000, 2_000 * Math.sqrt(frame.unitCount[i] / 100)));
-    else for (const ship of u.shipIdx) {
+    if (u.kind === 'lac') {
+      if (frame.unitCount[i] > 0) discs.push([centre, scales[i] * radii[i]]);
+    } else for (const ship of u.shipIdx) {
       const status = frame.shipStatus[ship];
       const recentWreck = shot.kind === 'aftermath' && replay.ships[ship].status.some((s) => s.status === ShipStatus.Destroyed && s.t <= frame.t && frame.t - s.t <= 30);
       if (status === ShipStatus.Absent || status === ShipStatus.Escaped || (status === ShipStatus.Destroyed && !recentWreck)) continue;
-      points.push(Array.from(frame.shipPos.subarray(ship * 3, ship * 3 + 3)) as Vec3);
+      points.push(drawnShip(ship));
     }
   });
   if (shot.kind === 'flight' && !shot.observerOnly) {
     const packets = (shot.focus?.packets ?? []).filter((i) => frame.packetAlive[i] > 0);
     if (packets.length) {
       points.length = 0;
+      discs.length = 0;
       target = [0, 0, 0];
       for (const i of packets) {
         const p = Array.from(frame.packetPos.subarray(i * 3, i * 3 + 3)) as Vec3;
@@ -296,9 +311,7 @@ export function directorPose(shot: DirectorShot, replay: Replay, frame: Frame, r
         points.push(context.pos);
         for (const ship of replay.units[context.i].shipIdx) {
           const status = frame.shipStatus[ship];
-          if (status !== ShipStatus.Absent && status !== ShipStatus.Escaped && status !== ShipStatus.Destroyed) {
-            points.push(Array.from(frame.shipPos.subarray(ship * 3, ship * 3 + 3)) as Vec3);
-          }
+          if (status !== ShipStatus.Absent && status !== ShipStatus.Escaped && status !== ShipStatus.Destroyed) points.push(drawnShip(ship));
         }
       }
     }
@@ -311,7 +324,8 @@ export function directorPose(shot: DirectorShot, replay: Replay, frame: Frame, r
   const orbit = reducedMotion ? 0 : (shot.orbitDegPerMin * (frame.t - shot.t0)) / 60;
   const az = ((shot.azimDeg + orbit) * Math.PI) / 180;
   const el = (shot.elevDeg * Math.PI) / 180;
-  const radius = points.reduce((r, p) => Math.max(r, dist(p, target)), 0) + displayRadius;
+  const reach = discs.reduce((r, [c, rad]) => Math.max(r, dist(c, target) + rad), points.reduce((r, p) => Math.max(r, dist(p, target)), 0));
+  const radius = reach + displayRadius;
   const d = !shot.kind || shot.kind === 'establish' ? Math.max(shot.distanceKm, radius * 2.8) : Math.max(20_000, radius * 2.8);
   const eye: Vec3 = [target[0] + d * Math.cos(el) * Math.cos(az), target[1] + d * Math.cos(el) * Math.sin(az), target[2] + d * Math.sin(el)];
   return { shotId: shot.id, scale: shot.scale, theater: shot.theater, eye, target, cut: reducedMotion };
