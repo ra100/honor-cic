@@ -155,7 +155,7 @@ test('honours prefers-reduced-motion', async ({ page }) => {
   expect(await state(page, 'reducedMotion')).toBe(true);
 });
 
-test('phone: Forces and the log open as sheets and nothing scrolls sideways', async ({ page, isMobile }) => {
+test('phone: Forces, the log and class data open as sheets and nothing scrolls sideways', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'phone project only');
   const errors = watchErrors(page);
   await openBattle(page, 'manticore');
@@ -165,6 +165,10 @@ test('phone: Forces and the log open as sheets and nothing scrolls sideways', as
   await expect(page.locator('#forces')).toBeVisible();
   await page.locator('#hudToggles').getByRole('button', { name: 'Log' }).click();
   await expect(page.locator('#side')).toBeVisible();
+  await page.getByRole('tab', { name: 'Ship detail' }).click();
+  await expect(page.locator('.object-panel')).toBeHidden();
+  await page.locator('#hudToggles').getByRole('button', { name: 'Class data' }).click();
+  await expect(page.locator('.object-panel')).toBeVisible();
   expect(errors).toEqual([]);
 });
 
