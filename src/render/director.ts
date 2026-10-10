@@ -1,6 +1,7 @@
-import { ShipStatus, unitPosition, type Frame, type Replay } from '../core/replay';
+import { lacCountAt, ShipStatus, shipStatusAt, unitPosition, type Frame, type Replay, type UnitTrack } from '../core/replay';
 import type { ScenarioPack, TimeRef } from '../core/schema';
 import { bodyPosition, indexBodies } from '../core/solver/orbits';
+import { fmtCount, fmtDistance, fmtDuration } from '../core/units';
 import { dist, type Vec3 } from '../core/vec';
 import { packetSpreadKm } from './density';
 import { beamTheatersFor } from './salvos';
@@ -85,7 +86,6 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
       shot.t0 = Math.max(0, resolvedTime(encounter.t, replay) - 3);
       shot.subject = [encounter.from, encounter.to];
       shot.kind = 'encounter';
-      shot.desc = 'The solved LAC encounter, followed by the close-range pass. Camera placement is schematic [S]; replay timing is unchanged.';
       shot.focus = { eventId: encounter.id, beams: beamIndices(shot.subject, resolvedTime(encounter.t, replay), resolvedTime(encounter.until, replay)) };
     } else if (packets.length) {
       const first = replay.packets[packets[0]];
@@ -98,7 +98,7 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
     return shot;
   });
   if (!shots.length) shots.push({
-    id: 'establish', label: 'The theater', desc: 'Scenario geometry, schematic camera [S].',
+    id: 'establish', label: 'Wide · the theater', desc: 'The forces and the geometry of this battle.',
     t0: 0, t1: replay.duration_s, theater: pack.meta.theaters[0].id, scale: 'engagement',
     subject: replay.units.filter((u) => u.theater === pack.meta.theaters[0].id).map((u) => u.id),
     distanceKm: 25_000_000, elevDeg: 25, azimDeg: 30, orbitDegPerMin: 2, kind: 'establish',
@@ -112,22 +112,36 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
     })) return;
     shots.push(shot);
   };
-  const eventShot = (id: string, kind: ShotKind, t0: number, subject: string[], theater: string, focus: ShotFocus, label: string): DirectorShot => ({
-    id, kind, t0, t1: replay.duration_s, subject, theater, scale: 'engagement', focus, label,
-    desc: kind === 'flight'
-      ? 'Packet-focused composition with the nearest present launcher or target as context [S]. Solved positions, routes, counts and timing are unchanged.'
-      : 'Camera composition [S], sampled from the solved replay; physical positions, counts and timing are unchanged.',
+  // Site A's captions name the framing, then what this shot shows (A report §5.2); every number comes from the replay.
+  const eventShot = (id: string, kind: ShotKind, t0: number, subject: string[], theater: string, focus: ShotFocus, label: string, desc: string): DirectorShot => ({
+    id, kind, t0, t1: replay.duration_s, subject, theater, scale: 'engagement', focus, label, desc,
     distanceKm: 100_000, elevDeg: kind === 'aftermath' ? 32 : kind === 'flight' ? 12 : 18,
     azimDeg: kind === 'launch' ? -60 : kind === 'flight' ? 75 : kind === 'encounter' ? 40 : 120,
     orbitDegPerMin: kind === 'aftermath' ? 0 : kind === 'flight' ? 1.5 : 0.8,
   });
+  const unitName = (id: string): string => replay.units.find((u) => u.id === id)?.name ?? id;
+  const missiles = (ids: number[]): number => ids.reduce((n, i) => n + replay.packets[i].launched.attack + replay.packets[i].launched.ew, 0);
+  // Unit names may be plural ("Home Fleet LACs"), so captions avoid verbs that agree with them.
+  const lossesText = (u: UnitTrack, t: number): string => {
+    if (u.kind === 'lac') {
+      const lost = (u.lacCount[0]?.count ?? 0) - lacCountAt(u, t);
+      return lost > 0 ? `${u.name}: ${fmtCount(lost)} LACs lost so far.` : `${u.name}: no LACs lost yet.`;
+    }
+    const count = (st: ShipStatus) => u.shipIdx.filter((i) => shipStatusAt(replay, replay.ships[i], t) === st).length;
+    const parts = [[count(ShipStatus.Destroyed), 'destroyed'], [count(ShipStatus.MissionKill), 'crippled']] as const;
+    const said = parts.filter(([n]) => n > 0).map(([n, what]) => `${fmtCount(n)} ${what}`);
+    return said.length ? `${u.name}: ${said.join(' and ')} so far.` : `${u.name}: no ships lost yet.`;
+  };
   for (const event of beamAttacks) {
     const t0 = resolvedTime(event.t, replay), t1 = resolvedTime(event.until, replay);
     const subject = [event.from, event.to];
     const theater = replay.units.find((u) => u.id === event.from)?.theater;
     if (!theater) continue;
     if (!shots.some((s) => s.focus?.eventId && Math.abs(s.t0 - (t0 - 3)) < 1)) {
-      addShot(eventShot(`beam:${event.id}`, 'encounter', Math.max(0, t0 - 3), subject, theater, { eventId: event.id, beams: beamIndices(subject, t0, t1) }, event.weapon === 'lac-mixed' ? 'LAC encounter' : 'Close-range energy pass'));
+      const lacs = event.weapon === 'lac-mixed';
+      addShot(eventShot(`beam:${event.id}`, 'encounter', Math.max(0, t0 - 3), subject, theater, { eventId: event.id, beams: beamIndices(subject, t0, t1) },
+        lacs ? 'Close · LAC encounter' : 'Close · energy-range pass',
+        `${unitName(event.from)} and ${unitName(event.to)} at ${lacs ? 'close' : 'energy'} range.`));
     }
   }
   for (const event of pack.events.filter((e) => e.type === 'fire_plan')) {
@@ -141,14 +155,22 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
     const lastArrival = Math.max(...firstWave.map((i) => replay.packets[i].tArrive));
     const launch = replay.packets[ordered.find((i) => replay.packets[i].tLaunch > 0) ?? ordered[0]];
     if (!shots.some((s) => s.kind === 'launch' && s.focus?.planId === event.id) && launch.tLaunch > 0) {
-      addShot(eventShot(`launch:${event.id}`, 'launch', Math.max(0, launch.tLaunch - 3), [from.id], from.theater, { planId: event.id, packets: ordered.filter((i) => replay.packets[i].salvoId === launch.salvoId) }, event.launch === 'tube' ? 'Tube launch' : event.launch === 'tow' ? 'Towed pods firing' : 'Pod launch'));
+      const salvo = ordered.filter((i) => replay.packets[i].salvoId === launch.salvoId);
+      const range = dist(unitPosition(from, launch.tLaunch), unitPosition(to, launch.tLaunch));
+      addShot(eventShot(`launch:${event.id}`, 'launch', Math.max(0, launch.tLaunch - 3), [from.id], from.theater, { planId: event.id, packets: salvo },
+        `Medium · ${from.name}, ${event.launch === 'tube' ? 'tube launch' : event.launch === 'tow' ? 'towed pods' : 'pod launch'}`,
+        `${fmtCount(missiles(salvo))} missiles at ${to.name}, ${fmtDistance(range)} away.`));
     }
     const flight = first.tLaunch + Math.max(8, Math.min(40, (firstArrival - first.tLaunch) * 0.18));
-    if (flight < firstArrival - 12) addShot(eventShot(`flight:${event.id}`, 'flight', flight, [from.id, to.id], to.theater, { planId: event.id, packets: firstWave }, 'Missiles in flight'));
-    if (!shots.some((s) => s.kind === 'impact' && s.focus?.planId === event.id)) {
-      addShot(eventShot(`impact:${event.id}`, 'impact', Math.max(first.tLaunch, firstArrival - 8), [to.id], to.theater, { planId: event.id, packets: firstWave }, 'Terminal defense and impact'));
+    if (flight < firstArrival - 12) {
+      addShot(eventShot(`flight:${event.id}`, 'flight', flight, [from.id, to.id], to.theater, { planId: event.id, packets: firstWave }, 'Macro wide · missiles in flight',
+        `${fmtCount(missiles(firstWave))} missiles from ${from.name} close on ${to.name}; first arrivals in ${fmtDuration(firstArrival - flight)}.`));
     }
-    addShot(eventShot(`aftermath:${event.id}`, 'aftermath', lastArrival + 1, [to.id], to.theater, { planId: event.id }, 'First-wave aftermath'));
+    if (!shots.some((s) => s.kind === 'impact' && s.focus?.planId === event.id)) {
+      addShot(eventShot(`impact:${event.id}`, 'impact', Math.max(first.tLaunch, firstArrival - 8), [to.id], to.theater, { planId: event.id, packets: firstWave }, `Close · ${to.name} under fire`,
+        `${fmtCount(missiles(firstWave))} missiles run into the counter-missiles and point defense of ${to.name}.`));
+    }
+    addShot(eventShot(`aftermath:${event.id}`, 'aftermath', lastArrival + 1, [to.id], to.theater, { planId: event.id }, 'Wide · after the first wave', lossesText(to, lastArrival + 1)));
   }
   shots.sort((a, b) => a.t0 - b.t0 || a.id.localeCompare(b.id));
   const budget = 40;
