@@ -5,7 +5,7 @@ import { add, norm, rotateAbout, scale } from '../vec';
 import { applyHit } from './damage';
 import { ASPECT_FACTOR, classifyAspect, endwallFactor } from './geometry';
 import { segmentState } from './kinematics';
-import type { PacketTrack } from './packets';
+import { defenseTimes, type PacketTrack } from './packets';
 import { alive, present, shipPos, unitBasis, type BeamEvent, type LogEntry, type ShipRuntime, type UnitRuntime } from './runtime';
 
 /** Arrivals at one target within this many seconds share its defensive channels. S constant. */
@@ -113,18 +113,19 @@ export function resolveArrivals(ctx: CombatContext): { planStats: Map<string, Pl
       const st = planStats.get(p.planId) as PlanStat;
       st.intercepted += cmSplit[i] + pdSplit[i];
       const left = p.launched.attack - cmSplit[i] - pdSplit[i];
-      p.survivors.push({ t: p.tArrive - 4, attack: p.launched.attack - cmSplit[i], ew: p.launched.ew, controller: p.launched.controller });
-      p.survivors.push({ t: p.tArrive - 1, attack: left, ew: p.launched.ew, controller: p.launched.controller });
+      const at = defenseTimes(p);
+      p.survivors.push({ t: at.cm, attack: p.launched.attack - cmSplit[i], ew: p.launched.ew, controller: p.launched.controller });
+      p.survivors.push({ t: at.pd, attack: left, ew: p.launched.ew, controller: p.launched.controller });
       p.survivors.push({ t: p.tArrive, attack: 0, ew: 0, controller: 0 });
 
       const approach = norm(segmentState(p.segments, p.tArrive).v);
       for (let k = 0; k < Math.min(VISUAL_KILLS_PER_PACKET, cmSplit[i]); k++) {
-        const at = segmentState(p.segments, p.tArrive - 4).p;
-        ctx.beams.push({ t: p.tArrive - 4, dur: 0.6, kind: 'cm-kill', from: at, to: at, side: target.side, aspect: null, ship: -1 });
+        const pos = segmentState(p.segments, at.cm).p;
+        ctx.beams.push({ t: at.cm, dur: 0.6, kind: 'cm-kill', from: pos, to: pos, side: target.side, aspect: null, ship: -1, unit: target.idx, toUnit: target.idx });
       }
       for (let k = 0; k < Math.min(VISUAL_KILLS_PER_PACKET, pdSplit[i]); k++) {
-        const at = segmentState(p.segments, p.tArrive - 1).p;
-        ctx.beams.push({ t: p.tArrive - 1, dur: 0.2, kind: 'pd-kill', from: at, to: at, side: target.side, aspect: null, ship: -1 });
+        const pos = segmentState(p.segments, at.pd).p;
+        ctx.beams.push({ t: at.pd, dur: 0.2, kind: 'pd-kill', from: pos, to: pos, side: target.side, aspect: null, ship: -1, unit: target.idx, toUnit: target.idx });
       }
 
       let cursor = Math.max(0, ds.findIndex((s) => s.idx === p.targetShip));
@@ -156,7 +157,7 @@ export function resolveArrivals(ctx: CombatContext): { planStats: Map<string, Pl
         if (m < VISUAL_BEAMS_PER_PACKET) {
           const to = shipPos(ctx.units, ship, p.tArrive);
           const standoff = needBase(prof.standoff, 'standoff');
-          ctx.beams.push({ t: p.tArrive, dur: 0.35, kind: 'laserhead', from: add(to, scale(incoming, -standoff)), to, side: p.side, aspect, ship: ship.idx });
+          ctx.beams.push({ t: p.tArrive, dur: 0.35, kind: 'laserhead', from: add(to, scale(incoming, -standoff)), to, side: p.side, aspect, ship: ship.idx, toUnit: target.idx });
         }
         cursor++;
       }

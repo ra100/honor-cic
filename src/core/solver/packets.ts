@@ -1,7 +1,7 @@
 import { hashSeed } from '../rng';
 import type { FirePlanEvent } from '../schema';
 import type { TechRegistry } from '../tech';
-import type { Vec3 } from '../vec';
+import { add, dot, len, scale, sub, type Vec3 } from '../vec';
 import { burnPlanOf, planIntercept } from './intercept';
 import type { Anchors, TimeResolver } from './timeref';
 import type { Counts, DrivePhase, KinSegment } from './types';
@@ -29,6 +29,15 @@ export interface PacketTrack {
   seed: number;
 }
 
+/** Counter-missiles meet a packet this long before arrival, point defence this long; both stay inside short flights. */
+const CM_LEAD_S = 4;
+const PD_LEAD_S = 1;
+
+export function defenseTimes(p: { tLaunch: number; tArrive: number }): { cm: number; pd: number } {
+  const flight = p.tArrive - p.tLaunch;
+  return { cm: p.tArrive - Math.min(CM_LEAD_S, 0.5 * flight), pd: p.tArrive - Math.min(PD_LEAD_S, 0.2 * flight) };
+}
+
 export interface LaunchContext {
   unitIndex: Map<string, number>;
   unitPosition(id: string, t: number): Vec3;
@@ -36,6 +45,24 @@ export interface LaunchContext {
   /** Ships of a unit in targeting priority (wall, carrier, screen); empty for LAC groups. */
   shipSlots(id: string): Array<{ ship: number; offset: (t: number) => Vec3 }>;
   side(id: string): string;
+  /** Radius of the front a LAC group's squadrons cover, km; null for fleets. */
+  front?(id: string): number | null;
+}
+
+/**
+ * A LAC group fights as squadrons across a broad front (S): the squadron flying in the aim's lane fires. The launch
+ * point sits off the group's centre, across its motion relative to the target, by at most the front radius, so a
+ * missile launched in a high-speed pass only has to correct its aim, not turn round.
+ */
+export function lanePoint(fromP: Vec3, fromV: Vec3, aimP: Vec3, aimV: Vec3, front: number): Vec3 {
+  const rel = sub(aimV, fromV);
+  const speed = len(rel);
+  const r = sub(aimP, fromP);
+  if (speed < 1 || dot(r, rel) >= 0) return fromP;
+  const u = scale(rel, 1 / speed);
+  const lateral = sub(r, scale(u, dot(r, u)));
+  const l = len(lateral);
+  return add(fromP, l > front ? scale(lateral, front / l) : lateral);
 }
 
 /** Splits total into n integer parts that differ by at most one and sum exactly to total. */
@@ -54,6 +81,7 @@ export function expandFirePlans(plans: FirePlanEvent[], tech: TechRegistry, time
     const t0 = times.resolve(ev.t);
     const launchers = ctx.shipSlots(ev.from);
     const targets = ctx.shipSlots(ev.to);
+    const front = ctx.front?.(ev.from) ?? null;
     const salvoAttack = splitEven(ev.totals.attack, ev.salvos);
     const salvoEw = splitEven(ev.totals.ew, ev.salvos);
     const salvoCtl = splitEven(ev.totals.controller, ev.salvos);
@@ -66,9 +94,12 @@ export function expandFirePlans(plans: FirePlanEvent[], tech: TechRegistry, time
         if (attack[j] + ew[j] + ctl[j] === 0) continue;
         const launcher = launchers.length ? launchers[j % launchers.length] : null;
         const aim = targets.length ? targets[(j * 7 + k) % targets.length] : null;
-        const launchP = launcher ? addV(ctx.unitPosition(ev.from, tL), launcher.offset(tL)) : ctx.unitPosition(ev.from, tL);
         const target = (t: number): Vec3 => (aim ? addV(ctx.unitPosition(ev.to, t), aim.offset(t)) : ctx.unitPosition(ev.to, t));
-        const ip = planIntercept({ plan, tLaunch: tL, launchP, launchV: ctx.unitVelocity(ev.from, tL), target });
+        const fromP = ctx.unitPosition(ev.from, tL);
+        const fromV = ctx.unitVelocity(ev.from, tL);
+        const launchP = launcher ? addV(fromP, launcher.offset(tL))
+          : front !== null ? lanePoint(fromP, fromV, target(tL), ctx.unitVelocity(ev.to, tL), front) : fromP;
+        const ip = planIntercept({ plan, tLaunch: tL, launchP, launchV: fromV, target });
         const launched = { attack: attack[j], ew: ew[j], controller: ctl[j] };
         out.push({
           idx: out.length,

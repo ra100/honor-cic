@@ -63,6 +63,10 @@ export interface BeamEvent {
   side: string;
   aspect: Aspect | null;
   ship: number;
+  /** Firing unit, when one fired it. */
+  unit?: number;
+  /** Unit the beam or kill happens at. */
+  toUnit?: number;
 }
 
 export interface LogEntry {

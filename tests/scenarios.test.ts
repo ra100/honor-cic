@@ -78,6 +78,45 @@ describe('scenario replays', () => {
   }, 60_000);
 });
 
+describe('Manticore LAC strike', () => {
+  const pack = getPack('manticore')!;
+  const r = solve(pack, TECH);
+
+  it('lands the Ferret flush as the wing goes through, not after turning round', () => {
+    const ferrets = r.packets.filter((p) => p.planId === 'lac-ferret-flush');
+    expect(ferrets.length).toBeGreaterThan(0);
+    for (const p of ferrets) {
+      expect(p.infeasible).toBe(false);
+      expect(p.tArrive - p.tLaunch).toBeLessThan(10);
+    }
+  });
+
+  it('kills missiles with counter-missiles and point defence only while they fly', () => {
+    for (const p of r.packets) {
+      for (let i = 1; i < p.survivors.length; i++) expect(p.survivors[i].t).toBeGreaterThanOrEqual(p.survivors[i - 1].t);
+      for (const s of p.survivors) {
+        expect(s.t).toBeGreaterThanOrEqual(p.tLaunch);
+        expect(s.t).toBeLessThanOrEqual(p.tArrive);
+      }
+    }
+  });
+
+  it('spreads the drawn shots of each energy attack over its whole window', () => {
+    for (const id of ['lac-dogfight-a', 'lac-dogfight-b', 'lac-shrike-grasers']) {
+      const ev = pack.events.find((e) => e.id === id);
+      if (ev?.type !== 'beam_attack') throw new Error(`${id} missing`);
+      const from = r.units.find((u) => u.id === ev.from)!.idx;
+      const to = r.units.find((u) => u.id === ev.to)!.idx;
+      const t0 = r.resolvedTimes[id];
+      const t1 = typeof ev.until === 'number' ? ev.until : t0;
+      const ts = r.beams.filter((b) => b.unit === from && b.toUnit === to && (b.kind === 'graser' || b.kind === 'laser')).map((b) => b.t);
+      expect(ts.length).toBeGreaterThan(0);
+      expect(Math.min(...ts)).toBeLessThan(t0 + 0.1 * (t1 - t0));
+      expect(Math.max(...ts)).toBeGreaterThan(t1 - 0.1 * (t1 - t0));
+    }
+  });
+}, 60_000);
+
 describe('beam attack ranges (MTS §12.2 check 9)', () => {
   it('flags a beam attack fired from beyond its stated range', () => {
     const pack = getPack('manticore')!;
