@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createFrame, sampleFrame, ShipStatus } from '../../src/core/replay';
+import { createFrame, lacCountAt, sampleFrame, ShipStatus } from '../../src/core/replay';
 import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
 import { LM_KM } from '../../src/core/units';
 import { shotsFor } from '../../src/render/director';
 import { getPack } from '../../src/registry';
-import { forceUnits, limitText, monthYear, phaseAt, phaseSpans, salvoTicks, shotNumbers, speedChip, tallies } from '../../src/ui/viewer/hud-model';
+import { debrief, forceUnits, limitText, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies } from '../../src/ui/viewer/hud-model';
 import { phaseMarks } from '../../src/ui/viewer/model';
 
 describe('HUD model (Site A tallies, forces, scrubber and captions)', () => {
@@ -39,6 +39,12 @@ describe('HUD model (Site A tallies, forces, scrubber and captions)', () => {
     expect(home.bars.reduce((a, b) => a + b.total, 0)).toBe(replay.units.find((u) => u.id === 'home-fleet')!.shipIdx.length);
     expect(units.find((u) => u.id === 'fifth-fleet')!.dormant).toBe(true);
     expect(limitText(pack, [30 * LM_KM, 0, 0], 0)).toBe('Outside limit');
+    // LAC strength reads aboard before launch and the survivors after recovery, not zero.
+    const hfLacs = replay.units.find((u) => u.id === 'hf-lacs')!;
+    const lacsAt = (t: number) => forceUnits(pack, replay, sampleFrame(replay, t, createFrame(replay))).find((u) => u.id === 'hf-lacs')!;
+    expect(lacsAt(0).lacText).toBe('2,300/2,300');
+    expect(lacsAt(replay.duration_s).lacText).toBe(`${lacCountAt(hfLacs, replay.duration_s).toLocaleString('en-US')}/2,300`);
+    expect(lacCountAt(hfLacs, replay.duration_s)).toBeGreaterThan(0);
   });
 
   it('lays phase segments end to end and puts one tick on each salvo', () => {
@@ -61,5 +67,46 @@ describe('HUD model (Site A tallies, forces, scrubber and captions)', () => {
     expect(speedChip(true, 'auto', 0.35)).toBe('slow ×0.35');
     expect(speedChip(true, 4, 99)).toBe('×4');
     expect(monthYear(pack)).toBe('July 1921 PD');
+  });
+
+  it('snaps the scale bar to 1, 2 or 5 of a decade near 110 px, in light-minutes past 2 LM', () => {
+    expect(scaleBar(3000 / 110)).toEqual({ widthPx: 73.3, label: '2,000 km' });
+    expect(scaleBar(7e6 / 110)).toEqual({ widthPx: 78.6, label: '5 million km' });
+    const far = scaleBar((66.7 * LM_KM) / 110)!;
+    expect(far.label).toBe('50 light-minutes');
+    expect(far.widthPx).toBeCloseTo(82.5, 1);
+    expect(scaleBar(0.9 / 110)).toEqual({ widthPx: 61.1, label: '0.5 km' });
+    expect(scaleBar(0)).toBeNull();
+    expect(scaleBar(Number.NaN)).toBeNull();
+  });
+
+  it('sums the after-action debrief from the final frame and the packet survivors', () => {
+    const end = sampleFrame(replay, replay.duration_s, createFrame(replay));
+    const d = debrief(pack, replay);
+    expect(d.rows.map((r) => r.id)).toEqual(replay.units.map((u) => u.id));
+    for (const row of d.rows) {
+      const u = replay.units.find((x) => x.id === row.id)!;
+      expect(row.kind).toBe(u.kind);
+      if (u.kind === 'fleet') {
+        expect(row.strength).toBe(u.shipIdx.length);
+        expect(row.destroyed + row.crippled + row.captured + row.escaped).toBeLessThanOrEqual(row.strength);
+      } else {
+        expect(row.strength).toBe(u.lacCount[0].count);
+        // LACs leave the count only through canon outcomes: destroyed, or captured and abandoned.
+        expect(row.destroyed + row.captured).toBe(u.lacCount[0].count - lacCountAt(u, replay.duration_s));
+      }
+    }
+    const lacs = (id: string) => d.rows.find((r) => r.id === id)!;
+    expect(lacs('sf-lacs').captured).toBeGreaterThan(0);
+    const destroyed = replay.ships.filter((_, i) => end.shipStatus[i] === ShipStatus.Destroyed).length;
+    expect(d.rows.filter((r) => r.kind === 'fleet').reduce((a, r) => a + r.destroyed, 0)).toBe(destroyed);
+    const launched = replay.packets.reduce((a, p) => a + p.launched.attack + p.launched.ew, 0);
+    expect(d.launched.reduce((a, x) => a + x.n, 0)).toBe(launched);
+    expect(d.detonated).toBe(tallies(replay, end).detonated);
+    for (const p of replay.packets.slice(0, 40)) {
+      const at = tallies(replay, sampleFrame(replay, p.tLaunch + 0.5, createFrame(replay))).inSpace;
+      expect(d.peak.n).toBeGreaterThanOrEqual(at);
+    }
+    expect(d.peak.n).toBe(tallies(replay, sampleFrame(replay, d.peak.t, createFrame(replay))).inSpace);
   });
 });

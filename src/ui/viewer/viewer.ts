@@ -271,7 +271,11 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       rendered++;
       labelLayer.update(view.labels(), view.camera, hud.canvas.clientWidth, hud.canvas.clientHeight, plotInsets);
       const st = view.status();
-      live = { frame, rate, samplingText: st.samplingText, scaleNote: st.scaleNote, notice: actionFailure ?? st.notice };
+      const focusU = view.controls ? view.camera.position.distanceTo(view.controls.target) : 0;
+      const kmPerPx = scaleView.kmPerUnit && focusU > 0 && hud.canvas.clientHeight > 0
+        ? (2 * focusU * Math.tan((view.camera.fov * Math.PI) / 360) * scaleView.kmPerUnit) / hud.canvas.clientHeight
+        : null;
+      live = { frame, rate, samplingText: st.samplingText, scaleNote: st.scaleNote, notice: actionFailure ?? st.notice, kmPerPx };
       viewAnimating = scaleView.animating?.() ?? false;
     }
     hud.render(s, live);

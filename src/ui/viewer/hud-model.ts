@@ -1,7 +1,7 @@
-import { DrivePhase, packetAliveAt, ShipStatus, unitPresent, type Frame, type Replay } from '../../core/replay';
-import type { ScenarioPack } from '../../core/schema';
+import { createFrame, DrivePhase, lacCountAt, packetAliveAt, packetPhaseAt, sampleFrame, ShipStatus, unitPresent, type Frame, type Replay } from '../../core/replay';
+import type { OutcomeEvent, ScenarioPack } from '../../core/schema';
 import { exclusionsAt, indexBodies, type SphereExclusion } from '../../core/solver/orbits';
-import { fmtCount } from '../../core/units';
+import { fmtCount, LM_KM } from '../../core/units';
 import { dist, type Vec3 } from '../../core/vec';
 import type { DirectorShot } from '../../render/director';
 import type { PhaseMark, Speed } from './model';
@@ -79,7 +79,7 @@ export function forceUnits(pack: ScenarioPack, r: Replay, frame: Frame, only: st
     };
     if (u.kind === 'lac') {
       const initial = u.lacCount[0]?.count ?? 0;
-      const now = present ? frame.unitCount[u.idx] : 0;
+      const now = lacCountAt(u, frame.t);
       return { ...base, bars: [{ label: 'LAC', total: initial, ok: now, crippled: 0 }], lacText: `${fmtCount(now)}/${fmtCount(initial)}` };
     }
     const bars = new Map<string, ForceBar>();
@@ -158,4 +158,77 @@ export function monthYear(pack: ScenarioPack): string | null {
   if (!m) return pack.meta.year_pd ? `${pack.meta.year_pd} PD` : null;
   const month = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][Number(m[2]) - 1];
   return `${month} ${m[1]} PD`;
+}
+
+const SCALE_FMT = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
+const snap125 = (v: number): number => {
+  const p = 10 ** Math.floor(Math.log10(v));
+  return (v / p >= 5 ? 5 : v / p >= 2 ? 2 : 1) * p;
+};
+
+/** Site A's scale bar (JS:7569-7592): about 110 px of the focus plane, snapped to 1, 2 or 5 of a decade. */
+export function scaleBar(kmPerPx: number): { widthPx: number; label: string } | null {
+  if (!(kmPerPx > 0) || !Number.isFinite(kmPerPx)) return null;
+  const km = kmPerPx * 110;
+  let val: number;
+  let label: string;
+  if (km > LM_KM * 2) {
+    const lm = snap125(km / LM_KM);
+    val = lm * LM_KM;
+    label = `${SCALE_FMT.format(lm)} light-minutes`;
+  } else {
+    val = snap125(km);
+    label = val >= 1e6 ? `${SCALE_FMT.format(val / 1e6)} million km` : `${SCALE_FMT.format(val)} km`;
+  }
+  return { widthPx: Number((val / kmPerPx).toFixed(1)), label };
+}
+
+export interface DebriefRow {
+  id: string; name: string; commander: string | null; ally: boolean; kind: 'fleet' | 'lac';
+  /** Warships, or LACs for a LAC group. */
+  strength: number; destroyed: number; crippled: number; captured: number; escaped: number;
+}
+export interface Debrief {
+  rows: DebriefRow[];
+  launched: Array<{ id: string; name: string; ally: boolean; n: number }>;
+  peak: { n: number; t: number };
+  detonated: number;
+}
+
+const inSpaceAt = (r: Replay, t: number): number => r.packets.reduce((n, p) => {
+  if (packetPhaseAt(p, t) === DrivePhase.Gone) return n;
+  const a = packetAliveAt(p, t);
+  return n + a.attack + a.ew;
+}, 0);
+
+/** Site A's after-action summary (JS:7597-7634), from the final frame and the packet survivors. */
+export function debrief(pack: ScenarioPack, r: Replay): Debrief {
+  const end = sampleFrame(r, r.duration_s, createFrame(r));
+  const ally = r.sides[0]?.id;
+  const rows = r.units.map((u): DebriefRow => {
+    const base = { id: u.id, name: u.name, commander: pack.units.find((d) => d.id === u.id)?.commander.value ?? null, ally: u.side === ally, kind: u.kind };
+    if (u.kind === 'lac') {
+      // LAC groups only shrink through canon outcomes, which tell destroyed from captured and abandoned.
+      const outcomes = pack.events.filter((e): e is OutcomeEvent => e.type === 'outcome' && e.unit === u.id);
+      const sum = (f: (c: OutcomeEvent['counts']) => number) => outcomes.reduce((a, e) => a + f(e.counts), 0);
+      return { ...base, strength: u.lacCount[0]?.count ?? 0, destroyed: sum((c) => c.destroyed), crippled: 0, captured: sum((c) => c.captured + c.abandoned), escaped: 0 };
+    }
+    const count = (st: ShipStatus) => u.shipIdx.filter((i) => end.shipStatus[i] === st).length;
+    return {
+      ...base, strength: u.shipIdx.length,
+      destroyed: count(ShipStatus.Destroyed), crippled: count(ShipStatus.MissionKill),
+      captured: count(ShipStatus.Captured), escaped: count(ShipStatus.Escaped),
+    };
+  });
+  const launched = r.sides.map((sd) => ({
+    id: sd.id, name: sd.name, ally: sd.id === ally,
+    n: r.packets.reduce((n, p) => (p.side === sd.id ? n + p.launched.attack + p.launched.ew : n), 0),
+  }));
+  // Survivors only fall after launch, so the peak sits at a launch instant.
+  let peak = { n: 0, t: 0 };
+  for (const t of [...new Set(r.packets.map((p) => p.tLaunch))].sort((a, b) => a - b)) {
+    const n = inSpaceAt(r, t);
+    if (n > peak.n) peak = { n, t };
+  }
+  return { rows, launched, peak, detonated: tallies(r, end).detonated };
 }
