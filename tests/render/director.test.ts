@@ -147,6 +147,29 @@ describe('scenario-driven close-range choreography', () => {
     expect(shots.length).toBeLessThanOrEqual(40);
   });
 
+  it('captions generated shots like Site A: a framing, then what this shot shows, in replay numbers', () => {
+    const authored = new Set(pack.meta.shots.map((x) => x.id));
+    const generated = shots.filter((x) => !authored.has(x.id));
+    expect(generated.length).toBeGreaterThan(10);
+    for (const shot of generated) {
+      expect(shot.label).toMatch(/^(Wide|Macro wide|Medium|Close) · \S/);
+      expect(shot.desc).not.toMatch(/Camera composition|Packet-focused|schematic/i);
+      expect(shot.desc.length).toBeGreaterThan(20);
+    }
+    // No two generated shots repeat one boilerplate description.
+    const descs = generated.map((x) => x.desc);
+    expect(new Set(descs).size).toBeGreaterThan(descs.length * 0.6);
+    const launch = generated.find((x) => x.kind === 'launch')!;
+    const plan = pack.events.find((e) => e.id === launch.focus?.planId)!;
+    const salvo = launch.focus!.packets!;
+    const n = salvo.reduce((a, i) => a + replay.packets[i].launched.attack + replay.packets[i].launched.ew, 0);
+    expect(launch.desc).toContain(n.toLocaleString('en-US'));
+    expect(launch.desc).toContain(replay.units[replay.packets[salvo[0]].toUnit].name);
+    expect(plan.type).toBe('fire_plan');
+    // Authored captions stay as the pack wrote them, including the LAC strike that becomes an encounter.
+    expect(shots.find((x) => x.id === 'lacs')!.desc).toBe(pack.meta.shots.find((x) => x.id === 'lacs')!.desc);
+  });
+
   it('cuts closer for actual launch/encounter detail while retaining the physical subjects', () => {
     for (const t of [1854, 1869]) {
       const shot = shotAt(shots, t)!;
