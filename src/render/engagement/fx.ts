@@ -219,6 +219,16 @@ export class BeamBatch {
     this.geometry.instanceCount = this.n;
   }
 
+  /** Both ends of every beam pushed this frame: [ax, ay, az, bx, by, bz] each, render units. */
+  segments(): Float32Array {
+    const out = new Float32Array(this.n * 6);
+    for (let i = 0; i < this.n; i++) {
+      out.set(this.a.subarray(i * 3, i * 3 + 3), i * 6);
+      out.set(this.b.subarray(i * 3, i * 3 + 3), i * 6 + 3);
+    }
+    return out;
+  }
+
   dispose(): void {
     this.geometry.dispose();
     this.material.dispose();

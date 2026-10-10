@@ -311,4 +311,44 @@ describe('EngagementView in 3D: formations and launches (Manticore)', () => {
     expect(headsNearShips(packet.tLaunch + 1, hfIdx, 3_000)).toBe(0);
     expect(headsNearShips(packet.tArrive - 0.02, sfIdx, 25_000)).toBe(0);
   });
+
+  it('ends Shrike graser fire on a live ship drawn near the LAC that fires, even when the solved target is already lost', () => {
+    const sf = unit('second-fleet');
+    const t = 1868.5;
+    const local = { ...replay, packets: [], beams: replay.beams.filter((b) => b.kind === 'graser' && b.toUnit === sf) };
+    const v = new EngagementView(pack, local, null);
+    const c = ctx(local, t);
+    orbitPose(v, centreOf(c, sf), 210, 25, 5e6);
+    v.update(c);
+    const live = local.units[sf].shipIdx.flatMap((s) => v.shipOnPlot(s) ?? []);
+    const segs = v.debugBeams();
+    expect(segs.length / 6).toBeGreaterThan(20);
+    let longest = 0;
+    let offGlyph = 0;
+    for (let k = 0; k < segs.length; k += 6) {
+      longest = Math.max(longest, Math.hypot(segs[k + 3] - segs[k], segs[k + 4] - segs[k + 1], segs[k + 5] - segs[k + 2]));
+      const end = Math.min(...live.map((g) => Math.hypot(g.x - segs[k + 3], g.y - segs[k + 4], g.z - segs[k + 5])));
+      if (end > 1) offGlyph++;
+    }
+    expect(offGlyph).toBe(0);
+    // The wing passes through the wall face to face, so each Shrike fires at a ship drawn close by.
+    expect(longest).toBeLessThan(400_000);
+  });
+
+  it('flies each Ferret packet from its lane of LACs onto the ships around its aim, not across the whole wall', () => {
+    const ferret = replay.packets.find((p) => p.planId === 'lac-ferret-flush' && p.targetShip >= 0)!;
+    const local = { ...replay, packets: [{ ...ferret, idx: 0 }] };
+    const v = new EngagementView(pack, local, null);
+    const c = ctx(local, ferret.tArrive - 0.02);
+    orbitPose(v, centreOf(c, unit('second-fleet')), 210, 25, 5e6);
+    v.update(c);
+    const heads = v.debugPositions().subarray(v.drawCounts().ships * 3);
+    const n = heads.length / 3;
+    expect(n).toBeGreaterThan(30);
+    const mid = [0, 1, 2].map((k) => heads.reduce((a, x, j) => (j % 3 === k ? a + x / n : a), 0));
+    let worst = 0;
+    for (let h = 0; h < heads.length; h += 3) worst = Math.max(worst, Math.hypot(heads[h] - mid[0], heads[h + 1] - mid[1], heads[h + 2] - mid[2]));
+    // Second Fleet is drawn over 2 Mkm; the ships around one aim sit within a few hundred thousand km of each other.
+    expect(worst).toBeLessThan(400_000);
+  });
 });
