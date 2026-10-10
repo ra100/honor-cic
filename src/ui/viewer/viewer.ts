@@ -263,10 +263,12 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       const scaleView: ScaleView = view;
       const fireT = s.fireStartedAt === null ? null : (performance.now() - s.fireStartedAt) / 1000;
       if (fireT !== null && fireT > FIRE_DEMO_S) store.set({ fireStartedAt: null });
+      const obstacles = hud.labelObstacles();
       const ctx: ViewContext = {
         replay, pack, tech: TECH, frame, layers: s.layers, perceived: s.perceived, density: s.density, theater: s.theater,
         selectedShip: s.selectedShip, selectedClass: s.selectedClass, reducedMotion: s.reducedMotion,
         plotInsets,
+        obstacles,
         focusSide: s.perceived.enabled ? s.perceived.side : pack.meta.sides[0].id,
         systemFocus: s.systemFocus,
         ship: { roll: s.shipRoll, pods: s.shipPods, sails: s.shipSails, fireT: fireT !== null && fireT <= FIRE_DEMO_S ? fireT : null },
@@ -278,7 +280,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       if (view.controls) renderedCameras.set(view, snapshotCamera(view.camera, view.controls.target));
       engine.render(view.scene, view.camera, scaleView.grade);
       rendered++;
-      labelLayer.update(view.labels(), view.camera, hud.canvas.clientWidth, hud.canvas.clientHeight, plotInsets);
+      labelLayer.update(view.labels(), view.camera, hud.canvas.clientWidth, hud.canvas.clientHeight, plotInsets, obstacles);
       const st = view.status();
       const focusU = view.controls ? view.camera.position.distanceTo(view.controls.target) : 0;
       const kmPerPx = scaleView.kmPerUnit && focusU > 0 && hud.canvas.clientHeight > 0

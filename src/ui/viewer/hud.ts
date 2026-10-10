@@ -3,7 +3,7 @@ import type { Frame, Replay } from '../../core/replay';
 import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import { directorSpeed, type DirectorShot } from '../../render/director';
-import type { PlotInsets } from '../../render/framing';
+import type { PlotInsets, PlotRect } from '../../render/framing';
 import { LAYER_TEXT, LAYERS, type ScaleId, type SystemFocus } from '../../render/scales/types';
 import { clear, h } from '../dom';
 import { fmtClock } from '../format';
@@ -36,6 +36,8 @@ export interface Hud {
   labels: HTMLElement;
   render(s: ViewerState, live: Live): void;
   plotInsets(): PlotInsets;
+  /** Canvas-relative boxes of HUD pieces floating over the plot, for the label layer to avoid. */
+  labelObstacles(): PlotRect[];
   dispose(): void;
 }
 
@@ -152,10 +154,10 @@ export function buildHud(d: HudDeps): Hud {
   const shotNo = h('div', { class: 'shot-no' });
   const shotName = h('div', { class: 'shot-name' });
   const shotDesc = h('div', { class: 'shot-desc' });
-  const caption = h('div', { id: 'caption', class: 'hud' }, shotNo, shotName, shotDesc);
+  const caption = h('div', { id: 'caption' }, shotNo, shotName, shotDesc);
   const readoutText = h('span', null);
   const readoutNote = h('div', { class: 'note' }, SHIP_CAPTION);
-  const readout = h('div', { id: 'readout', class: 'hud num' }, readoutText, readoutNote);
+  const readout = h('div', { id: 'readout', class: 'num' }, readoutText, readoutNote);
   const scaleBarLine = h('i', null);
   const scaleBarText = h('span', null);
   const scaleBarEl = h('div', { id: 'scalebar', class: 'hud', 'aria-hidden': 'true' }, scaleBarLine, scaleBarText);
@@ -186,7 +188,9 @@ export function buildHud(d: HudDeps): Hud {
   const contextSystem = h('div', { class: 'ctx-row' }, presetButtons.map((p) => p.el));
   const contextBattle = h('div', { class: 'ctx-row' }, followBtn, resetBtn);
   const contextShip = h('div', { class: 'ctx-row' }, classSel, rollBtn, podsBtn, sailsBtn, fireBtn);
-  const context = h('div', { id: 'context', class: 'hud' }, contextSystem, contextBattle, contextShip);
+  const context = h('div', { id: 'context' }, contextSystem, contextBattle, contextShip);
+  // Bottom left, stacked so a longer caption or a second row of tools pushes the rest up instead of overlapping.
+  const dock = h('div', { id: 'dock', class: 'hud' }, readout, context, caption);
 
   // Transport (A report §7.7).
   const play = h('button', { class: 'tb icon', id: 'btnPlay', type: 'button', 'aria-label': 'Play', title: 'Play or pause (Space)', onclick: togglePlay }, icon(ICON.play));
@@ -324,7 +328,7 @@ export function buildHud(d: HudDeps): Hud {
     debriefEl.hidden = false;
   };
 
-  const root = h('div', { class: 'viewer' }, canvas, labels, notice, top, forces.el, side, shipPanel.el, context, readout, scaleBarEl, caption, hudToggles, transport,
+  const root = h('div', { class: 'viewer' }, canvas, labels, notice, top, forces.el, side, shipPanel.el, dock, scaleBarEl, hudToggles, transport,
     Object.values(menus), debriefEl, notesDlg);
 
   const layoutObserver = new ResizeObserver(d.onLayoutChange);
@@ -385,10 +389,20 @@ export function buildHud(d: HudDeps): Hud {
     return insets;
   };
 
+  const labelObstacles = (): PlotRect[] => {
+    const bounds = canvas.getBoundingClientRect();
+    const floating = [readout, context, caption, scaleBarEl, hudToggles, forces.el, side, shipPanel.el, debriefEl, ...Object.values(menus)];
+    return floating.flatMap((el) => {
+      if (el.hidden || !el.getClientRects().length || getComputedStyle(el).display === 'none') return [];
+      const r = el.getBoundingClientRect();
+      return r.width && r.height ? [{ x: r.left - bounds.left, y: r.top - bounds.top, width: r.width, height: r.height }] : [];
+    });
+  };
+
   let lastTallyT = -1;
   let lastPlaying: boolean | null = null;
   return {
-    root, canvas, labels, plotInsets,
+    root, canvas, labels, plotInsets, labelObstacles,
     render(s, live) {
       const t = live.frame.t;
       root.dataset.scale = s.scale;
