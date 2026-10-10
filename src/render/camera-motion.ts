@@ -11,6 +11,12 @@ export function snapshotCamera(camera: PerspectiveCamera, target: Vector3): Came
   return { position: camera.position.clone(), target: target.clone(), rotation: camera.quaternion.clone() };
 }
 
+/** Site A's free camera closes 1 - exp(-9 dt) of the remaining input each frame (JS:6595); as OrbitControls' damping factor this makes a drag glide for the same wall time at any frame rate. */
+export function orbitDamping(dtS: number): number {
+  const dt = dtS > 0 && Number.isFinite(dtS) ? Math.min(dtS, 0.1) : 1 / 60;
+  return 1 - Math.exp(-9 * dt);
+}
+
 export function continueOrbitDamping(camera: PerspectiveCamera, controls: OrbitControls, before: CameraSnapshot, height: number): boolean {
   if (!controls.enableDamping) return false;
   const radius = Math.max(camera.near, Math.min(before.position.distanceTo(before.target), camera.position.distanceTo(controls.target)));
