@@ -43,6 +43,8 @@ const RECENTER_KM = 50_000;
 const REFRAME_AFTER_S = 120;
 /** Most LACs drawn per group; a larger group is drawn as a random share of its wing. */
 const LAC_DOTS_PER_GROUP = 4_000;
+/** Ships around its aim that a LAC packet's missiles spread over [S]. */
+const LAC_AIM_SHIPS = 4;
 /** Site A's LAC icon: a solid disc 1.8 px in radius (A report §4.5). */
 const LAC_DOT_PX = 3.6;
 /** LACs of the squadrons in its target's lane that a LAC packet's missiles leave from. */
@@ -118,6 +120,15 @@ function rect(c: THREE.Vector3, a: Vec3, ha: number, b: Vec3, hb: number): THREE
   const at = (sa: number, sb: number) =>
     new THREE.Vector3(c.x + a[0] * ha * sa + b[0] * hb * sb, c.y + a[1] * ha * sa + b[1] * hb * sb, c.z + a[2] * ha * sa + b[2] * hb * sb);
   return [at(1, 1), at(1, -1), at(-1, -1), at(-1, 1)];
+}
+
+/** The `n` anchors of `list` whose formation slots lie nearest `at`, nearest first. */
+function nearestSlots(list: Uint32Array, at: Vec3, slotOf: (anchor: number) => Vec3, n: number): Uint32Array {
+  const d2 = (a: number) => {
+    const o = slotOf(a);
+    return (o[0] - at[0]) ** 2 + (o[1] - at[1]) ** 2 + (o[2] - at[2]) ** 2;
+  };
+  return Uint32Array.from([...list].sort((a, b) => d2(a) - d2(b) || a - b).slice(0, n));
 }
 
 const shifted = (c: THREE.Vector3, d: Vec3, k: number): THREE.Vector3 => new THREE.Vector3(c.x + d[0] * k, c.y + d[1] * k, c.z + d[2] * k);
@@ -342,6 +353,14 @@ export class EngagementView implements ScaleView {
       }
       const aim = p.targetShip >= 0 ? 1 + p.targetShip : -1;
       this.aimAnchor[i] = list.includes(aim) ? aim : -1;
+      // A LAC packet is fired from its lane at the ships in front of it: the live ship nearest its aim's formation slot
+      // (the solver aims at the slot even when that ship is already lost) and its nearest neighbours.
+      if (this.wings.has(p.fromUnit) && p.targetShip >= 0 && list.length) {
+        const slotOf = (a: number) => replay.ships[a - 1].slot;
+        const centre = nearestSlots(list, replay.ships[p.targetShip].slot, slotOf, 1)[0];
+        this.aimAnchor[i] = centre;
+        list = nearestSlots(list, slotOf(centre), slotOf, LAC_AIM_SHIPS);
+      }
       return list;
     });
   }
@@ -1291,6 +1310,7 @@ export class EngagementView implements ScaleView {
         else this.glows.push(this.origin.point(packet.segments[0].p0, new THREE.Vector3()), 2_000 * k, kind === 'tube' ? 5 : 8, rgb, 1.5 * fade, GLOW.spark);
       }
       const defenders = new Map<number, number[]>();
+      const standIns = new Map<number, THREE.Vector3 | undefined>();
       for (let i = firstAtOrAfter(this.beams, t - this.maxBeamDur); i < this.beams.length && this.beams[i].t <= t; i++) {
         const b = this.beams[i];
         if (t >= b.t + b.dur || this.beamTheaters.get(b) !== ctx.theater) continue;
@@ -1301,7 +1321,8 @@ export class EngagementView implements ScaleView {
         // Fire aimed at a ship ends on its drawn glyph: from the LAC drawn nearest it when a wing fires, else keeping the
         // shot's solved direction and length. Fire between wings runs from one of the shooter's LACs to the target's
         // LAC drawn nearest it.
-        const target = b.ship >= 0 ? this.shown.get(b.ship) : undefined;
+        const lost = b.ship >= 0 && !WALL_UP.has(shipStatusAt(this.replay, this.replay.ships[b.ship], b.t - 1e-3));
+        const target = b.ship < 0 ? undefined : lost ? this.standIn(ctx, b.ship, standIns) : this.shown.get(b.ship);
         const shooterWing = b.unit !== undefined && this.wingDots.has(b.unit) ? b.unit : -1;
         const targetWing = b.ship < 0 && b.toUnit !== undefined && this.wingDots.has(b.toUnit) ? b.toUnit : -1;
         if (target) {
@@ -1320,9 +1341,12 @@ export class EngagementView implements ScaleView {
           this.glows.push(a, 1_000 * k, 2.2, mixRgb([1, 0.92, 0.72], [1, 0.45, 0.12], u), 3 * fade, GLOW.blast);
           if (reach >= 1) this.glows.push(z, 600 * k, 2.5, HULL_HIT_RGB, 2.8 * fade, GLOW.spark);
         } else if (b.kind === 'graser' || b.kind === 'laser') {
-          // Site A's Shrike graser and Havenite energy fire colours (A report §4.8 beam types 4 and 5).
-          const rgb = b.side === ctx.focusSide ? GRASER_RGB : HOSTILE_FIRE_RGB;
-          this.beamBatch.push(a, z, rgb, 2.6 * (ctx.reducedMotion ? 0.75 : 0.4 + 0.6 * Math.sin(Math.PI * u)), 2.4);
+          // Site A's Shrike graser and Havenite energy fire (A report §4.8 beam types 4 and 5): intensity 1.5 and 2.4,
+          // brightest the moment it fires and fading over the shot.
+          const mine = b.side === ctx.focusSide;
+          const rgb = mine ? GRASER_RGB : HOSTILE_FIRE_RGB;
+          const left = 1 - u;
+          this.beamBatch.push(a, z, rgb, (mine ? 1.5 : 2.4) * (ctx.reducedMotion ? 0.75 : left * (0.6 + 0.4 * left)), 2.4);
           if (target) this.glows.push(z, 600 * k, 3, HULL_HIT_RGB, 2.4 * fade, GLOW.spark);
           else this.glows.push(z, 300 * k, 2, rgb, 1.2 * fade, GLOW.spark);
         } else if (b.kind === 'transit') {
@@ -1356,6 +1380,30 @@ export class EngagementView implements ScaleView {
     }
     this.glows.commit();
     this.beamBatch.commit();
+  }
+
+  /**
+   * Where fire aimed at a ship that is no longer drawn lands: the drawn ship of its fleet still in formation nearest its
+   * slot [S]. The solver picks targets before it knows the losses, so it can aim at a ship already destroyed.
+   */
+  private standIn(ctx: ViewContext, ship: number, cache: Map<number, THREE.Vector3 | undefined>): THREE.Vector3 | undefined {
+    if (cache.has(ship)) return cache.get(ship);
+    const { replay, frame } = ctx;
+    const at = replay.ships[ship].slot;
+    let best: THREE.Vector3 | undefined;
+    let bestD = Infinity;
+    for (const s of replay.units[replay.ships[ship].unit].shipIdx) {
+      const glyph = this.shown.get(s);
+      if (!glyph || !WALL_UP.has(frame.shipStatus[s] as ShipStatus)) continue;
+      const o = replay.ships[s].slot;
+      const d = (o[0] - at[0]) ** 2 + (o[1] - at[1]) ** 2 + (o[2] - at[2]) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = glyph;
+      }
+    }
+    cache.set(ship, best);
+    return best;
   }
 
   /** Each LAC lost in the last LAC_KILL_S flashes where it was drawn (A report §4.8 blast type 7); captured LACs do not. */
@@ -1541,6 +1589,11 @@ export class EngagementView implements ScaleView {
       rings: this.ringLabels, boundaries: this.plane.shownSpheres + this.plane.shownCones, fleetRings: this.fleetRings,
       bodies: this.bodyLayer.drawn,
     };
+  }
+
+  /** Both ends of every beam drawn this frame, [ax, ay, az, bx, by, bz] each, in render units. */
+  debugBeams(): Float32Array {
+    return this.beamBatch.segments();
   }
 
   /** Displayed ship positions, then the head of every sampled missile streak, in render units. */
