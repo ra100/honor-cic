@@ -7,7 +7,7 @@ import { bodyPosition, indexBodies, orbitPolyline } from '../solver/orbits';
 import { dist } from '../vec';
 
 const FIELD_UNITS: Record<string, readonly Unit[]> = {
-  radius: ['km', 'Mkm', 'LM', 'm'], hyper_limit: ['km', 'Mkm', 'LM'], exclusion: ['km', 'Mkm', 'LM'],
+  radius: ['km', 'Mkm', 'LM', 'm'], hyper_limit: ['km', 'Mkm', 'LM'], exclusion: ['km', 'Mkm', 'LM'], base_radius: ['km', 'Mkm', 'LM'],
   phase: ['deg'], inclination: ['deg'], period: ['s', 'min', 'yr'], mass: ['Msun', 't'],
   spacing: ['km', 'Mkm'], accel: ['g', 'km/s2'], accel_max: ['g', 'km/s2'], accel_normal: ['g', 'km/s2'],
   distance: ['km', 'Mkm', 'LM'], min: ['km', 'Mkm', 'LM'], range: ['km', 'Mkm', 'LM'],

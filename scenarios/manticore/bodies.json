@@ -34,7 +34,7 @@
       "radius": { "value": 6496, "unit": "km", "evidence": "W", "source_id": "mts", "locator": "§2.2 diameter 12,992 km" },
       "orbit": {
         "radius": { "value": 12.4, "unit": "LM", "evidence": "S", "source_id": "mts", "locator": "Appendix A", "uncertainty": "draft orbit; Kepler from the 1.73-year period gives 12.45 LM (D, MTS §2.2)" },
-        "phase": { "value": 250, "unit": "deg", "evidence": "S", "source_id": "honor-cic", "uncertainty": "orbital phase at the epoch is not published" },
+        "phase": { "value": 225, "unit": "deg", "evidence": "S", "source_id": "honor-cic", "uncertainty": "the supplied tactical map puts Manticore at (0, -12.4) LM with the Junction at 45 deg; rotated into this frame" },
         "period": { "value": 1.73, "unit": "yr", "evidence": "W", "source_id": "mts", "locator": "§2.2" },
         "inclination": { "value": 0, "unit": "deg", "evidence": "S", "source_id": "honor-cic", "uncertainty": "coplanar assumed" } },
       "offset": null, "hyper_limit": null, "exclusion": null },
@@ -42,7 +42,7 @@
       "radius": { "value": 6953, "unit": "km", "evidence": "W", "source_id": "mts", "locator": "§2.2 diameter 13,906 km" },
       "orbit": {
         "radius": { "value": 15.3, "unit": "LM", "evidence": "S", "source_id": "mts", "locator": "§2.2", "status": "conflict", "uncertainty": "provisional scenario value; Kepler with the W 5.22-year period gives about 26.0 LM (MTS §2.2)" },
-        "phase": { "value": 25, "unit": "deg", "evidence": "S", "source_id": "honor-cic", "uncertainty": "chosen so the Sphinx approaches lie toward the Junction, inside the provisional resonance-zone direction the narrative needs" },
+        "phase": { "value": 96.633, "unit": "deg", "evidence": "S", "source_id": "honor-cic", "uncertainty": "the supplied tactical map puts Sphinx at (-12.0, 9.5) LM with the Junction at 45 deg; rotated into this frame, the Sphinx approaches lie just behind the resonance zone's base, so Second Fleet's arrival and Third Fleet's emergence are both possible" },
         "period": { "value": 5.22, "unit": "yr", "evidence": "W", "source_id": "mts", "locator": "§2.2" },
         "inclination": { "value": 0, "unit": "deg", "evidence": "S", "source_id": "honor-cic", "uncertainty": "coplanar assumed" } },
       "offset": null, "hyper_limit": null, "exclusion": null },
@@ -99,6 +99,9 @@
       "orbit": null, "offset": { "value": [412, 0, 0], "unit": "LM" }, "offset_evidence": "S",
       "hyper_limit": null,
       "exclusion": { "value": 1000000, "unit": "km", "evidence": "P", "source_id": "obs", "locator": "MTS §2.6", "uncertainty": "described as less than one million km; used as an upper bound" },
+      "resonance_zone": { "star": "manticore-a",
+        "base_radius": { "value": 22, "unit": "LM", "evidence": "S", "source_id": "mts", "locator": "Appendix A, §2.6", "uncertainty": "provisional 44 LM base; the novel describes a roughly conical volume with spurs, and no map fixes its width" },
+        "note": "Drawn and enforced as a cone from Manticore-A to the terminus. Hyper emergences and departures inside it are rejected." },
       "note": "412 LM is an inherited map parameter (S, MTS §2.4); the wiki describes about seven LH." }
   ]
 }

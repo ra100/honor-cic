@@ -20,10 +20,10 @@ describe('orbits (MTS §1.2, §2)', () => {
       expect(lm(r)).toBeCloseTo(18.2, 6);
     }
   });
-  it('places Sphinx at its epoch phase', () => {
+  it('places Sphinx at its epoch phase, on the supplied bearing just outside the resonance-zone rim', () => {
     const p = bodyPosition(idx, 'sphinx', 0);
-    expect(lm(p[0])).toBeCloseTo(15.3 * Math.cos((25 * Math.PI) / 180), 6);
-    expect(lm(p[1])).toBeCloseTo(15.3 * Math.sin((25 * Math.PI) / 180), 6);
+    expect(lm(p[0])).toBeCloseTo(15.3 * Math.cos((96.633 * Math.PI) / 180), 6);
+    expect(lm(p[1])).toBeCloseTo(15.3 * Math.sin((96.633 * Math.PI) / 180), 6);
   });
   it('moves Sphinx a little over 90 minutes', () => {
     const moved = dist(bodyPosition(idx, 'sphinx', 0), bodyPosition(idx, 'sphinx', 5400));
@@ -40,10 +40,25 @@ describe('orbits (MTS §1.2, §2)', () => {
     const ex = exclusionsAt(idx, 0);
     expect(ex.find((e) => e.body === 'manticore-a')?.radius).toBeCloseTo(22 * LM_KM, 0);
     expect(insideExclusion(idx, [10 * LM_KM, 0, 0], 0)?.body).toBe('manticore-a');
-    expect(insideExclusion(idx, [30 * LM_KM, 0, 0], 0)).toBeNull();
+    expect(insideExclusion(idx, [0, 30 * LM_KM, 0], 0)).toBeNull();
     const j = bodyPosition(idx, 'junction', 0);
     expect(insideExclusion(idx, [j[0] + 500_000, j[1], j[2]], 0)?.kind).toBe('terminus');
     expect(len(sub(j, [412 * LM_KM, 0, 0]))).toBeLessThan(1);
+  });
+  it('models the resonance zone as a cone from the star to the Junction terminus (MTS §2.6, S)', () => {
+    const rz = exclusionsAt(idx, 0).find((e) => e.kind === 'resonance-zone');
+    expect(rz).toBeDefined();
+    if (rz?.kind !== 'resonance-zone') return;
+    expect(lm(rz.radius)).toBeCloseTo(22, 6);
+    expect(len(sub(rz.apex, bodyPosition(idx, 'junction', 0)))).toBeLessThan(1);
+    expect(len(rz.base)).toBeLessThan(1);
+    const at = (x: number, y: number) => insideExclusion(idx, [x * LM_KM, y * LM_KM, 0], 0)?.kind ?? null;
+    expect(at(200, 0)).toBe('resonance-zone');
+    expect(at(30, 0)).toBe('resonance-zone');
+    expect(at(23 * Math.cos(Math.PI / 3), 23 * Math.sin(Math.PI / 3))).toBe('resonance-zone');
+    expect(at(-30, 0)).toBeNull();
+    expect(at(200, 15)).toBeNull();
+    expect(at(22.6 * Math.cos((78.6 * Math.PI) / 180), 22.6 * Math.sin((78.6 * Math.PI) / 180))).toBeNull();
   });
   it('passes the positional frames and projection checks on every pack', () => {
     const bad = validateStatic(pack, TECH).filter((i) => (i.check === 'frames' || i.check === 'projection') && i.severity === 'error');
