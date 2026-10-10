@@ -1,79 +1,43 @@
-import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { fleetDisplayFormation, type FormationGlyph } from '../../src/render/formations';
+import { rngFor } from '../../src/core/rng';
+import { formationOffsets } from '../../src/core/solver/formation';
+import { formationSpread, MAX_FORMATION_RADIUS_PX, NEIGHBOUR_SHARE, slotRadiusKm, slotSpacingKm } from '../../src/render/formations';
 
-describe('display-only fleet formations', () => {
-  const width = 375, height = 844;
-  const safe = { x: 0, y: 116, width, height: 510 };
-  const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 10_000);
-  camera.position.z = 1000;
-  camera.updateMatrixWorld();
-  const atPixel = (x: number, y: number) => new THREE.Vector3(x * 2 / width - 1, 1 - y * 2 / height, 0).unproject(camera);
-  const pixel = (pos: THREE.Vector3) => {
-    const p = pos.clone().project(camera);
-    return new THREE.Vector2((p.x + 1) * width / 2, (1 - p.y) * height / 2);
-  };
-  const glyphsAt = (centre: THREE.Vector3, count = 100): FormationGlyph[] => Array.from({ length: count }, (_, ship) => ({
-    ship, role: ship < 8 ? 'carrier' : 'wall', classId: ship < 8 ? 'minotaur' : 'invictus',
-    flagship: ship === 8, size: 7, pos: centre.clone(),
-  }));
+describe('display spread of a 3D formation', () => {
+  const wall = formationOffsets('wall', 147, 25_000, rngFor('formation', 'home-fleet'));
+  const spacing = slotSpacingKm(wall);
+  const radius = slotRadiusKm(wall);
+  const base = { spacingKm: spacing, radiusKm: radius, minGapPx: 12, neighbourKm: Infinity };
 
-  it('keeps crowded glyphs fully inside the safe plot when their true centre is near an edge', () => {
-    for (const [x, y] of [[28, 360], [347, 360], [188, 140], [188, 602]]) {
-      const centre = atPixel(x, y);
-      const glyphs = glyphsAt(centre);
-      const display = fleetDisplayFormation(glyphs, centre, camera, width, height, safe, 'edge');
-      expect(display.schematic).toBe(true);
-      display.positions.forEach((pos, i) => {
-        const p = pixel(pos), half = glyphs[i].size / 2;
-        expect(p.x - half).toBeGreaterThanOrEqual(safe.x);
-        expect(p.x + half).toBeLessThanOrEqual(safe.x + safe.width);
-        expect(p.y - half).toBeGreaterThanOrEqual(safe.y);
-        expect(p.y + half).toBeLessThanOrEqual(safe.y + safe.height);
-      });
-    }
+  it('measures a wall by its own slots: rows 0.6 of the column spacing apart', () => {
+    expect(spacing).toBeCloseTo(15_000, -2);
+    expect(radius).toBeGreaterThan(150_000);
+    expect(radius).toBeLessThan(250_000);
+    expect(slotSpacingKm([[0, 0, 0]])).toBe(0);
   });
 
-  it('is stable by ship identity and leaves physical positions and quantities untouched', () => {
-    const centre = atPixel(188, 360);
-    const glyphs = glyphsAt(centre);
-    const before = glyphs.map((g) => g.pos.toArray());
-    const display = fleetDisplayFormation(glyphs, centre, camera, width, height, safe, 'identity', 80);
-    const reversed = [...glyphs].reverse();
-    const reordered = fleetDisplayFormation(reversed, centre, camera, width, height, safe, 'identity', 80);
-    expect(display.positions).toHaveLength(100);
-    expect(glyphs.map((g) => g.pos.toArray())).toEqual(before);
-    expect(reordered.positions.map((p) => p.toArray()).reverse()).toEqual(display.positions.map((p) => p.toArray()));
-    expect(display.positions.every((p) => pixel(p).distanceTo(pixel(centre)) <= 80.000001)).toBe(true);
-    const mean = display.positions.reduce((sum, p) => sum.add(pixel(p)), new THREE.Vector2()).divideScalar(100);
-    expect(mean.distanceTo(pixel(centre))).toBeLessThan(1e-6);
-    const carrierX = display.positions.slice(0, 8).map((p) => pixel(p).x);
-    const wallX = display.positions.slice(8).map((p) => pixel(p).x);
-    expect(Math.max(...carrierX)).toBeLessThanOrEqual(Math.min(...wallX));
+  it('is life size up close and grows with the zoom-out just enough to keep neighbours apart', () => {
+    expect(formationSpread({ ...base, kmPerPx: 500 })).toBe(1);
+    const k = formationSpread({ ...base, kmPerPx: 20_000 });
+    expect(k * spacing / 20_000).toBeCloseTo(12, 6);
+    expect(formationSpread({ ...base, kmPerPx: 30_000 })).toBeGreaterThan(k);
   });
 
-  it('preserves already separated physical glyphs instead of spreading every fleet', () => {
-    const centre = atPixel(188, 360);
-    const glyphs = glyphsAt(centre, 2);
-    glyphs[0].pos = atPixel(150, 360);
-    glyphs[1].pos = atPixel(226, 360);
-    const display = fleetDisplayFormation(glyphs, centre, camera, width, height, safe, 'separated');
-    expect(display.schematic).toBe(false);
-    expect(display.positions.map((p) => p.toArray())).toEqual(glyphs.map((g) => g.pos.toArray()));
-    expect(display.positions[0]).not.toBe(glyphs[0].pos);
+  it('caps the drawn radius in pixels and keeps clear of the nearest other fleet', () => {
+    // 147 ships stay under the cap at any zoom; Second Fleet's 330-ship wall reaches it.
+    expect(formationSpread({ ...base, kmPerPx: 1e6 }) * radius / 1e6).toBeLessThan(MAX_FORMATION_RADIUS_PX);
+    const big = formationOffsets('wall', 330, 25_000, rngFor('formation', 'second-fleet'));
+    const bigRadius = slotRadiusKm(big);
+    const wide = formationSpread({ ...base, spacingKm: slotSpacingKm(big), radiusKm: bigRadius, kmPerPx: 1e6 });
+    expect(wide * bigRadius / 1e6).toBeCloseTo(MAX_FORMATION_RADIUS_PX, 6);
+    const crowded = formationSpread({ ...base, kmPerPx: 20_000, neighbourKm: 2e6 });
+    expect(crowded * radius).toBeCloseTo(NEIGHBOUR_SHARE * 2e6, 0);
+    expect(formationSpread({ ...base, kmPerPx: 20_000, neighbourKm: 1_000 })).toBe(1);
   });
 
-  it('uses the available rectangle without compressing glyphs to the nearest circular edge', () => {
-    const centre = atPixel(58, 360);
-    const glyphs = glyphsAt(centre);
-    const display = fleetDisplayFormation(glyphs, centre, camera, width, height, safe, 'rectangle');
-    const pixels = display.positions.map(pixel);
-    let gap = Infinity;
-    pixels.forEach((p, i) => {
-      for (const other of pixels.slice(0, i)) gap = Math.min(gap, p.distanceTo(other));
-    });
-    expect(gap).toBeGreaterThanOrEqual(8);
-    expect(pixels.every((p) => p.x >= 3.5 && p.x <= width - 3.5
-      && p.y >= safe.y + 3.5 && p.y <= safe.y + safe.height - 3.5)).toBe(true);
+  it('falls back to life size for a single ship or a degenerate camera', () => {
+    expect(formationSpread({ ...base, radiusKm: 0, kmPerPx: 20_000 })).toBe(1);
+    expect(formationSpread({ ...base, kmPerPx: Number.NaN })).toBe(1);
+    expect(formationSpread({ ...base, kmPerPx: Infinity })).toBe(1);
   });
 });

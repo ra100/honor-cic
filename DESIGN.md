@@ -50,7 +50,7 @@ Site A labels: display-font uppercase name, condensed subtitle, a 6 px leader ti
 ## Views
 
 - **System**: Site A's star, hyper globe, orbits, Junction and resonance-zone cone, two-line labels; Site B's shaded planets, stations, fleet callouts and camera presets.
-- **Engagement**: Site A's range rings centred on my fleet, fleet rings, velocity vectors, hyper-limit arc and missile streaks; the formation layout stays as built.
+- **Engagement**: Site A's range rings centred on my fleet, fleet rings, velocity vectors, hyper-limit arc and missile streaks. Fleets keep their 3D formations from every viewing angle (never re-laid to face the camera), drawn larger about their true centres when zoomed out. Missiles leave the ships that fire them and come down on ships of the target fleet, so salvos read as fired from the wall.
 - **Ship detail**: honor-cic's class hulls with Site B's schematic wedge (double stress bands, sidewalls), Keyhole, pod rails and tethers, transit sails, grid floor, callouts and four demos.
 
 ## Honesty

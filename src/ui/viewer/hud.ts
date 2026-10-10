@@ -295,7 +295,7 @@ export function buildHud(d: HudDeps): Hud {
     legend(svg('<circle cx="9" cy="9" r="6.5" fill="none" stroke="#8199b0" stroke-dasharray="2 2"/><path d="M9 6 12 9 9 12 6 9z" fill="#ff4d6a"/>'), 'Contact', 'perceived picture: ring = position uncertainty, label = age of the data'),
     legend(svg('<path d="M2 6h14M2 12h14" stroke="#00d2ff" stroke-width="1.6"/>'), 'Impeller wedge', 'stress bands above and below the hull'),
     h('h3', null, 'Weapons and effects'),
-    legend(svg('<path d="M2 13 13 4" stroke="#7dffb0" stroke-width="1.6"/><path d="M5 16 16 7" stroke="#ff9db0" stroke-width="1.6"/><circle cx="13" cy="4" r="1.6" fill="#fff"/><circle cx="16" cy="7" r="1.6" fill="#fff"/>'), 'Missiles', 'streaks in the firing side\'s colour; bright head = drive burning, faint = coasting'),
+    legend(svg('<path d="M2 13 13 4" stroke="#7dffb0" stroke-width="1.6"/><path d="M5 16 16 7" stroke="#ff9db0" stroke-width="1.6"/><circle cx="13" cy="4" r="1.6" fill="#fff"/><circle cx="16" cy="7" r="1.6" fill="#fff"/>'), 'Missiles', 'streaks from the firing ships in their side\'s colour; bright head = drive burning, faint = coasting'),
     legend(svg('<path d="M2 3 9 9M16 3 9 9M2 15 9 9M16 15 9 9" stroke="#c3ffe1" stroke-width="1.2"/><circle cx="9" cy="9" r="2.2" fill="#ffe7ad"/>'), 'Laserhead', 'rods converge on the target from stand-off range'),
     legend(svg('<path d="M1 9h16" stroke="#cbfff4" stroke-width="2"/>'), 'Graser or laser', 'beam at energy range'),
     legend(svg('<circle cx="5" cy="9" r="2.6" fill="#dcf8ff"/><circle cx="13" cy="9" r="2.6" fill="#ffdfad"/>'), 'Defensive kill', 'pale cyan: counter-missile; amber: point defense'),
