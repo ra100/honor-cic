@@ -75,7 +75,8 @@ describe('HUD model (Site A tallies, forces, scrubber and captions)', () => {
     const far = scaleBar((66.7 * LM_KM) / 110)!;
     expect(far.label).toBe('50 light-minutes');
     expect(far.widthPx).toBeCloseTo(82.5, 1);
-    expect(scaleBar(0.9 / 110)).toEqual({ widthPx: 61.1, label: '0.5 km' });
+    expect(scaleBar(0.9 / 110)).toEqual({ widthPx: 61.1, label: '500 m' });
+    expect(scaleBar(1.5 / 110)).toEqual({ widthPx: 73.3, label: '1 km' });
     expect(scaleBar(0)).toBeNull();
     expect(scaleBar(Number.NaN)).toBeNull();
   });

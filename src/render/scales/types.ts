@@ -4,7 +4,7 @@ import type { Frame, Replay } from '../../core/replay';
 import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import type { Vec3 } from '../../core/vec';
-import type { PlotInsets, ShipFraming } from '../framing';
+import type { PlotInsets } from '../framing';
 import type { GradeProfile } from '../grade';
 import type { LabelSpec } from '../labels';
 
@@ -43,7 +43,6 @@ export interface ViewContext {
   selectedClass: string | null;
   reducedMotion: boolean;
   plotInsets?: PlotInsets;
-  shipFraming?: ShipFraming;
   /** "My side": the commander's side in the perceived picture, else the first declared side. Range rings centre on its fleet. */
   focusSide: string;
   systemFocus: SystemFocus;

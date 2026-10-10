@@ -10,6 +10,7 @@ import { fmtClock } from '../format';
 import { renderNotes, safeNoteUrl } from '../notes';
 import { CATALOG_HREF } from '../router';
 import type { Store } from '../store';
+import { CAPTION as SHIP_CAPTION } from '../../render/ship/site-b';
 import { debrief, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies, type Debrief } from './hud-model';
 import { occupiedPlotInsets, type PlotOccupancy } from './layout';
 import { DENSITIES, knownSide, nextPhase, prevPhase, scaleSelection, shipClassId, SPEEDS, type PhaseMark, type Speed, type ViewerState } from './model';
@@ -151,7 +152,9 @@ export function buildHud(d: HudDeps): Hud {
   const shotName = h('div', { class: 'shot-name' });
   const shotDesc = h('div', { class: 'shot-desc' });
   const caption = h('div', { id: 'caption', class: 'hud' }, shotNo, shotName, shotDesc);
-  const readout = h('div', { id: 'readout', class: 'hud num' });
+  const readoutText = h('span', null);
+  const readoutNote = h('div', { class: 'note' }, SHIP_CAPTION);
+  const readout = h('div', { id: 'readout', class: 'hud num' }, readoutText, readoutNote);
   const scaleBarLine = h('i', null);
   const scaleBarText = h('span', null);
   const scaleBarEl = h('div', { id: 'scalebar', class: 'hud', 'aria-hidden': 'true' }, scaleBarLine, scaleBarText);
@@ -440,9 +443,10 @@ export function buildHud(d: HudDeps): Hud {
         setText(shotName, s.scale === 'system' ? 'System overview' : 'Engagement');
         setText(shotDesc, 'Drag to orbit, scroll to zoom, right-drag to pan. Click a ship to inspect it, or press Director to return to the camera script.');
       }
-      const readoutText = ship ? live.scaleNote : s.scale === 'engagement' ? live.samplingText ?? '' : '';
-      setText(readout, readoutText);
-      readout.hidden = !readoutText;
+      const readoutLine = ship ? live.scaleNote : s.scale === 'engagement' ? live.samplingText ?? '' : '';
+      setText(readoutText, readoutLine);
+      readoutNote.hidden = !ship;
+      readout.hidden = !readoutLine && !ship;
       const bar = live.kmPerPx ? scaleBar(live.kmPerPx) : null;
       scaleBarEl.hidden = !bar;
       if (bar) {

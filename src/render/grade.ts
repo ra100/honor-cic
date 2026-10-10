@@ -11,8 +11,8 @@ export interface GradeProfile {
 
 /** Site A: only genuinely hot pixels (star cores, blasts, terminal heads, beams) bloom. */
 export const GRADE_CINEMATIC: GradeProfile = { exposure: 1.1, bloomStrength: 0.45, bloomRadius: 0.4, bloomThreshold: 1.1, vignette: 0.32 };
-/** Site B's ship display: lit metal and faint additive fields, no bloom. Exposure folds in three's ACES 1/0.6 scale. */
-export const GRADE_TECHNICAL: GradeProfile = { exposure: 1.9, bloomStrength: 0.2, bloomRadius: 0.3, bloomThreshold: 1.6, vignette: 0.18 };
+/** Site B's ship display: lit metal and faint fields, almost no bloom. Exposure 1 puts this ACES fit on three's ACES at Site B's 1.2. */
+export const GRADE_TECHNICAL: GradeProfile = { exposure: 1, bloomStrength: 0.2, bloomRadius: 0.3, bloomThreshold: 1.6, vignette: 0.12 };
 
 export const GRADE_SHADER = {
   uniforms: {
