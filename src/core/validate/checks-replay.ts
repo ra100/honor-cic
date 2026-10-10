@@ -90,6 +90,7 @@ const latencyCheck: ReplayCheck = ({ pack, replay }) => {
 };
 
 const READY_FACTOR = { ready: 0, standby: 1, routine: 4, 'powered-down': 8 } as const;
+const EXCLUSION_TEXT = { 'hyper-limit': 'hyper limit', terminus: 'terminus exclusion', 'resonance-zone': 'resonance zone' } as const;
 
 /** MTS §12.2 check 11 and §2.6: hyper transits happen outside exclusions with a ready generator. */
 const escapeCheck: ReplayCheck = ({ pack, tech, replay }) => {
@@ -101,7 +102,7 @@ const escapeCheck: ReplayCheck = ({ pack, tech, replay }) => {
     for (const [t, via, what] of legs) {
       if (via !== 'hyper' || !Number.isFinite(t)) continue;
       const ex = insideExclusion(bodies, unitPosition(u, t), t);
-      if (ex) out.push(issue('escape', 'error', `${u.name} ${what} through hyper inside ${ex.name}'s ${ex.kind} at t=${t.toFixed(0)}`, `units.${u.id}`));
+      if (ex) out.push(issue('escape', 'error', `${u.name} ${what} through hyper inside ${ex.name}'s ${EXCLUSION_TEXT[ex.kind]} at t=${t.toFixed(0)}`, `units.${u.id}`));
     }
   });
   for (const ev of pack.events) {
@@ -116,7 +117,7 @@ const escapeCheck: ReplayCheck = ({ pack, tech, replay }) => {
         out.push(issue('escape', 'error', `${s.name} escapes ${(esc.t - ready).toFixed(0)} s after the order but needs ${need.toFixed(0)} s from ${s.readiness}`, `events.${ev.id}`));
       }
       const ex = insideExclusion(bodies, shipPositionAt(replay, s, esc.t), esc.t);
-      if (ex) out.push(issue('escape', 'error', `${s.name} translates out inside ${ex.name}'s ${ex.kind}`, `events.${ev.id}`));
+      if (ex) out.push(issue('escape', 'error', `${s.name} translates out inside ${ex.name}'s ${EXCLUSION_TEXT[ex.kind]}`, `events.${ev.id}`));
     }
   }
   return out;

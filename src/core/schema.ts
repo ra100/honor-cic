@@ -82,6 +82,8 @@ export const BodyZ = z.object({
   offset_evidence: EvidenceZ.optional(),
   hyper_limit: SVNumZ.nullable(),
   exclusion: SVNumZ.nullable(),
+  /** Terminus only: the roughly conical interference volume toward its star (MTS §2.6). Translation inside it is lethal in the lowest bands. */
+  resonance_zone: z.object({ star: z.string(), base_radius: SVNumZ, note: z.string().optional() }).strict().optional(),
   note: z.string().optional(),
 }).strict();
 const BodiesFileZ = z.object({ bodies: z.array(BodyZ).min(1) }).strict();
@@ -302,6 +304,11 @@ export function integrityErrors(p: ScenarioPack): string[] {
 
   p.bodies.forEach((b, i) => {
     if (b.parent_id !== null && !bodyIds.has(b.parent_id)) e.push(`bodies.json: bodies.${i}.parent_id "${b.parent_id}" is not a body`);
+    if (b.resonance_zone) {
+      if (b.kind !== 'terminus') e.push(`bodies.json: bodies.${i}.resonance_zone belongs on a terminus, not a ${b.kind}`);
+      const star = p.bodies.find((s) => s.id === b.resonance_zone?.star);
+      if (star?.kind !== 'star') e.push(`bodies.json: bodies.${i}.resonance_zone.star "${b.resonance_zone.star}" is not a star`);
+    }
   });
 
   p.units.forEach((u, i) => {
