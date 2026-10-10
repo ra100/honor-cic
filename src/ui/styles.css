@@ -129,6 +129,8 @@ select.tb option, select option { background: #0b1424; color: var(--ink); }
 .lbl.callout::before { display: none; }
 .lbl.callout.fleet { font-size: 13px; font-weight: 500; text-align: center; }
 .lbl.callout small { font: 400 10px/1.4 var(--f-mono); color: #a3b4c0; opacity: 1; }
+/* Site B dims a fleet's callout until it arrives (B report §2.10). */
+.lbl.pending { opacity: 0.6; }
 .lbl.note { font: 400 10px/1.4 var(--f-mono); letter-spacing: 0.045em; color: #648798; padding-left: 0; }
 .lbl.note::before { display: none; }
 
