@@ -15,6 +15,12 @@ async function settledRenderCount(page: Page): Promise<number> {
   return previous;
 }
 
+/** Waits for a render after `baseline`, then for rendering to stop. Under a busy software GPU the first frame can lag the input. */
+async function wokeAndSettled(page: Page, baseline: number): Promise<number> {
+  await expect.poll(() => page.evaluate(() => window.__honorCic!.renderCount()), { timeout: 15_000 }).toBeGreaterThan(baseline);
+  return settledRenderCount(page);
+}
+
 test('training replay plays and scrubs to the end without errors', async ({ page }) => {
   const errors = watchErrors(page);
   await openBattle(page, 'training');
@@ -143,14 +149,13 @@ test('paused rendering settles, then wakes for replay time and orbit input', asy
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => window.__honorCic!.renderCount())).toBe(idle);
   await setState(page, { t: 300 });
-  const afterScrub = await settledRenderCount(page);
-  expect(afterScrub).toBeGreaterThan(idle);
+  const afterScrub = await wokeAndSettled(page, idle);
   const box = (await page.locator('.plot').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2 + 30, { steps: 6 });
   await page.mouse.up();
-  expect(await settledRenderCount(page)).toBeGreaterThan(afterScrub);
+  await wokeAndSettled(page, afterScrub);
   expect(errors).toEqual([]);
 });
 
