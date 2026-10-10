@@ -31,7 +31,8 @@ export interface UnitTrack {
   departVia: string | null;
   shipIdx: number[];
   lacClasses: Record<string, number>;
-  lacCount: Array<{ t: number; count: number }>;
+  /** LACs in the group from each time on; `cause` says how the step's losses went. */
+  lacCount: Array<{ t: number; count: number; cause?: 'destroyed' | 'captured' }>;
 }
 
 export interface ShipTrack {
