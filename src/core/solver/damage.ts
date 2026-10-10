@@ -60,17 +60,22 @@ function timeAtShare(hits: Hit[], share: number): number | null {
   return hits[hits.length - 1].t;
 }
 
+/** LAC losses are spread over the outcome's span in steps about this long, so a wing thins as it fights. S. */
+const LAC_LOSS_STEP_S = 2;
+
 function applyLacOutcome(u: UnitRuntime, ev: OutcomeEvent, t: number, from: number, log: LogEntry[]): void {
   const lost = ev.counts.destroyed + ev.counts.captured + ev.counts.abandoned;
   let count = u.lacCount[u.lacCount.length - 1].count;
-  const destroyedSteps = splitEven(ev.counts.destroyed, 5);
-  destroyedSteps.forEach((n, k) => {
-    count -= n;
-    u.lacCount.push({ t: from + ((t - from) * (k + 1)) / 5, count });
-  });
+  if (ev.counts.destroyed > 0) {
+    const steps = Math.min(ev.counts.destroyed, Math.max(5, Math.round((t - from) / LAC_LOSS_STEP_S)));
+    splitEven(ev.counts.destroyed, steps).forEach((n, k) => {
+      count -= n;
+      u.lacCount.push({ t: from + ((t - from) * (k + 1)) / steps, count, cause: 'destroyed' });
+    });
+  }
   if (ev.counts.captured + ev.counts.abandoned > 0) {
     count -= ev.counts.captured + ev.counts.abandoned;
-    u.lacCount.push({ t, count });
+    u.lacCount.push({ t, count, cause: 'captured' });
   }
   u.lacCount.sort((a, b) => a.t - b.t);
   const byClass = ev.by_class ? ` (${Object.entries(ev.by_class).map(([k, n]) => `${n.toLocaleString('en-US')} ${k}`).join(', ')})` : '';

@@ -22,7 +22,7 @@ export interface UnitRuntime {
   tDepart: number;
   ships: number[];
   lacClasses: Record<string, number>;
-  lacCount: Array<{ t: number; count: number }>;
+  lacCount: Array<{ t: number; count: number; cause?: 'destroyed' | 'captured' }>;
 }
 
 export interface Hit { t: number; dmg: number; aspect: Aspect; sub: Subsystem }

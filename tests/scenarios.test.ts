@@ -101,6 +101,19 @@ describe('Manticore LAC strike', () => {
     }
   });
 
+  it('thins each LAC wing every two seconds or so over its fight, and books the surrender as captures', () => {
+    const hf = r.units.find((u) => u.id === 'hf-lacs')!;
+    for (let i = 1; i < hf.lacCount.length; i++) {
+      expect(hf.lacCount[i].t).toBeGreaterThanOrEqual(hf.lacCount[i - 1].t);
+      expect(hf.lacCount[i].count).toBeLessThanOrEqual(hf.lacCount[i - 1].count);
+    }
+    const steps = hf.lacCount.filter((s) => s.cause === 'destroyed');
+    expect(steps.length).toBeGreaterThan(40);
+    expect(Math.max(...steps.slice(1).map((s, i) => s.t - steps[i].t))).toBeLessThan(2.5);
+    const sf = r.units.find((u) => u.id === 'sf-lacs')!;
+    expect(sf.lacCount[sf.lacCount.length - 1].cause).toBe('captured');
+  });
+
   it('spreads the drawn shots of each energy attack over its whole window', () => {
     for (const id of ['lac-dogfight-a', 'lac-dogfight-b', 'lac-shrike-grasers']) {
       const ev = pack.events.find((e) => e.id === id);
