@@ -293,7 +293,7 @@ export function buildHud(d: HudDeps): Hud {
     h('dl', { class: 'keys' }, KEYS.map(([k, v]) => [h('dt', null, h('kbd', null, k)), h('dd', null, v)])),
     h('h3', null, 'Evidence'),
     h('dl', { class: 'keys' }, (Object.keys(EVIDENCE_TEXT) as EvidenceLabel[]).map((k) => [h('dt', null, `[${k}]`), h('dd', null, EVIDENCE_TEXT[k])])),
-    h('p', { class: 'help' }, 'Drag to orbit, scroll to zoom, right-drag to pan, click a ship to inspect it. Symbols are screen-sized; distances are physical.'),
+    h('p', { class: 'help' }, 'Drag to orbit, scroll to zoom, right-drag to pan. Click a ship to inspect it, double-click to follow it. Symbols are screen-sized; distances are physical.'),
     h('button', { class: 'tb', type: 'button', onclick: () => { set({ menu: 'none' }); notesDlg.showModal(); } }, 'Notes and sources'));
   const menus = { shots: shotsMenu, layers: layersMenu, key: keyMenu };
 
@@ -441,7 +441,7 @@ export function buildHud(d: HudDeps): Hud {
       } else {
         setText(shotNo, s.follow && s.scale !== 'ship' ? 'Free camera · following' : 'Free camera');
         setText(shotName, s.scale === 'system' ? 'System overview' : 'Engagement');
-        setText(shotDesc, 'Drag to orbit, scroll to zoom, right-drag to pan. Click a ship to inspect it, or press Director to return to the camera script.');
+        setText(shotDesc, 'Drag to orbit, scroll to zoom, right-drag to pan. Click a ship to inspect it, double-click to follow it. Press Director to return to the shot list.');
       }
       const readoutLine = ship ? live.scaleNote : s.scale === 'engagement' ? live.samplingText ?? '' : '';
       setText(readoutText, readoutLine);
