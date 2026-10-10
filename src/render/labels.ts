@@ -61,12 +61,13 @@ export class LabelLayer {
     root.prepend(this.svg);
   }
 
-  update(specs: LabelSpec[], camera: THREE.Camera, width: number, height: number, insets?: PlotInsets): void {
+  /** `obstacles` are HUD boxes over the plot (caption, tools, sheets) that labels must not sit under. */
+  update(specs: LabelSpec[], camera: THREE.Camera, width: number, height: number, insets?: PlotInsets, obstacles: PlotRect[] = []): void {
     const safe = safePlotRect(width, height, insets);
     camera.updateMatrixWorld();
     const live = new Set<string>();
     const lines = new Set<string>();
-    const occupied: PlotRect[] = [];
+    const occupied: PlotRect[] = [...obstacles];
     const exclusions = new Map<THREE.Vector3[], PlotRect[]>();
     for (const s of [...specs].sort((a, b) => labelPriority(b) - labelPriority(a))) {
       this.v.copy(s.pos).project(camera);
