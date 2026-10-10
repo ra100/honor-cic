@@ -5,9 +5,17 @@ import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import type { Vec3 } from '../../core/vec';
 import type { PlotInsets, ShipFraming } from '../framing';
+import type { GradeProfile } from '../grade';
 import type { LabelSpec } from '../labels';
 
 export type ScaleId = 'system' | 'engagement' | 'ship';
+/** Site B system camera presets, generic across packs: origin star, companion star, both stars with the terminus, outer orbits. */
+export type SystemFocus = 'primary' | 'secondary' | 'binary' | 'outer';
+export const SYSTEM_FOCUS: readonly SystemFocus[] = ['primary', 'secondary', 'binary', 'outer'];
+
+/** Site B ship display toggles. fireT counts seconds since the fire/defense demo started; null when idle. */
+export interface ShipToggles { roll: boolean; pods: boolean; sails: boolean; fireT: number | null }
+export const FIRE_DEMO_S = 20;
 
 /** MTS §11.1 display layers. */
 export const LAYERS = ['celestial', 'truth', 'commander', 'engagement', 'protection', 'comms', 'damage'] as const;
@@ -36,6 +44,10 @@ export interface ViewContext {
   reducedMotion: boolean;
   plotInsets?: PlotInsets;
   shipFraming?: ShipFraming;
+  /** "My side": the commander's side in the perceived picture, else the first declared side. Range rings centre on its fleet. */
+  focusSide: string;
+  systemFocus: SystemFocus;
+  ship: ShipToggles;
 }
 
 export interface ViewStatus {
@@ -52,6 +64,10 @@ export interface ScaleView {
   readonly camera: THREE.PerspectiveCamera;
   /** Free-camera input; the viewer disables it for inactive views and in director mode. */
   readonly controls: OrbitControls | null;
+  /** How the engine develops this view; the cinematic profile when absent. */
+  readonly grade?: GradeProfile;
+  /** True while view-owned animation (demos, pod drift, turntable) needs frames although the replay is paused. */
+  animating?(): boolean;
   /** Call setPose before update: views draw relative to the pose's floating origin. */
   update(ctx: ViewContext): void;
   /** Camera pose from physical km (director shots). */

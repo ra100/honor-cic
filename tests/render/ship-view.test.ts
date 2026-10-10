@@ -13,7 +13,7 @@ describe('ShipView technical workspace', () => {
   const ctx = (patch: Partial<ViewContext> = {}): ViewContext => ({
     replay, pack, tech: TECH, frame: sampleFrame(replay, 0, createFrame(replay)),
     layers: Object.fromEntries(LAYERS.map((l) => [l, true])) as ViewContext['layers'],
-    perceived: { enabled: false, side: 'alliance' }, density: 4, theater: 'range',
+    perceived: { enabled: false, side: 'alliance' }, density: 4, theater: 'range', focusSide: 'alliance', systemFocus: 'primary', ship: { roll: false, pods: true, sails: false, fireT: null },
     selectedShip: null, selectedClass: null, reducedMotion: false, ...patch,
   });
 

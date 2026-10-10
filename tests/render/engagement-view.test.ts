@@ -13,7 +13,7 @@ describe('EngagementView', () => {
   const ctx = (t: number, patch: Partial<ViewContext> = {}): ViewContext => ({
     replay, pack, tech: TECH, frame: sampleFrame(replay, t, createFrame(replay)),
     layers: { ...(Object.fromEntries(LAYERS.map((l) => [l, true])) as ViewContext['layers']), commander: false, protection: false },
-    perceived: { enabled: false, side: 'alliance' }, density: 1, theater: 'range',
+    perceived: { enabled: false, side: 'alliance' }, density: 1, theater: 'range', focusSide: 'alliance', systemFocus: 'primary', ship: { roll: false, pods: true, sails: false, fireT: null },
     selectedShip: null, selectedClass: null, reducedMotion: false, ...patch,
   });
   const inFlight = Math.min(...replay.packets.map((p) => p.tLaunch)) + 20;
