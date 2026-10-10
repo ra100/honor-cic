@@ -58,24 +58,46 @@ export interface InterceptPlan {
   arrival: Vec3;
 }
 
+const MAX_STEP_S = 5;
+const MIN_STEP_S = 1e-3;
+/** km/s², above any hull's acceleration: covers the target's speed changing within one scan step. */
+const TARGET_ACCEL_BOUND = 10;
+
+/**
+ * First flight time at which the burn covers the required displacement, bracketed as [lo, hi]. Each step is no
+ * longer than the time the gap needs to close at the fastest possible rate, so the few-second window of a
+ * high-speed fly-by is found instead of a turn-round long after the pass.
+ */
+function firstWindow(plan: BurnPlan, tMax: number, required: (T: number) => Vec3, gap: (T: number) => number): [number, number] | null {
+  const aMax = Math.max(...plan.stages.map((s) => s.accel));
+  const closingBound = (T: number) => {
+    const rel = len(sub(required(T + MIN_STEP_S), required(T))) / MIN_STEP_S;
+    return 1.25 * (rel + burnDisplacement(plan, T).v) + (aMax + TARGET_ACCEL_BOUND) * MAX_STEP_S;
+  };
+  let T = 0;
+  let g = gap(0);
+  while (T < tMax) {
+    const step = Math.min(MAX_STEP_S, Math.max(MIN_STEP_S, -g / closingBound(T)));
+    const next = Math.min(tMax, T + step);
+    const gn = gap(next);
+    if (gn >= 0) return [T, next];
+    T = next;
+    g = gn;
+  }
+  return null;
+}
+
 export function planIntercept({ plan, tLaunch, launchP, launchV, target }: InterceptInput): InterceptPlan {
   const powered = plan.stages.reduce((a, s) => a + s.dur, 0);
   const tMax = powered + plan.maxCoast;
   const required = (T: number) => sub(target(tLaunch + T), addScaled(launchP, launchV, T));
   const gap = (T: number) => burnDisplacement(plan, T).s - len(required(T));
 
-  let hiT = -1;
-  for (let T = 5; T <= tMax + 1e-9; T += 5) {
-    if (gap(T) >= 0) {
-      hiT = T;
-      break;
-    }
-  }
-  let feasible = hiT > 0;
+  const window = firstWindow(plan, tMax, required, gap);
+  let feasible = window !== null;
   let T = tMax;
-  if (feasible) {
-    let lo = Math.max(0, hiT - 5);
-    let hi = hiT;
+  if (window) {
+    let [lo, hi] = window;
     for (let i = 0; i < 60; i++) {
       const mid = (lo + hi) / 2;
       if (gap(mid) >= 0) hi = mid;

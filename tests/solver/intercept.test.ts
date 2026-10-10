@@ -49,6 +49,22 @@ describe('planIntercept', () => {
     expect(plan.maxSpeed / C_KM_S).toBeLessThan(0.9);
   });
 
+  it('catches the few-second window of a fly-by instead of turning round after the pass', () => {
+    // A LAC closing at 52,000 km/s launches 168,000 km out; the target is 500 km off its line of flight.
+    const target = still([500, 168_000, 0]);
+    const plan = planIntercept({ plan: mk16, tLaunch: 0, launchP: [0, 0, 0], launchV: [0, 52_000, 0], target });
+    expect(plan.feasible).toBe(true);
+    expect(plan.T).toBeGreaterThan(3.1);
+    expect(plan.T).toBeLessThan(3.3);
+    expect(dist(segmentState(plan.segments, plan.T).p, target())).toBeLessThan(1);
+  });
+
+  it('still turns round when the pass misses by more than the missile can correct', () => {
+    const target = still([40_000, 168_000, 0]);
+    const plan = planIntercept({ plan: mk16, tLaunch: 0, launchP: [0, 0, 0], launchV: [0, 52_000, 0], target });
+    expect(plan.T).toBeGreaterThan(60);
+  });
+
   it('reports an unreachable target as infeasible instead of forcing it', () => {
     const plan = planIntercept({ plan: mk16, tLaunch: 0, launchP: [0, 0, 0], launchV: [0, 0, 0], target: still([500e6, 0, 0]) });
     expect(plan.feasible).toBe(false);

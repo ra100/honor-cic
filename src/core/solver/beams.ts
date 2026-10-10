@@ -10,6 +10,7 @@ import { alive, shipPos, unitBasis, unitPos, type ShipRuntime } from './runtime'
 
 /** Abstract damage of one hitting LAC graser shot. S constant. */
 const GRASER_DAMAGE = 6;
+/** Drawn shots per attack, spread evenly from its start to its end. */
 const VISUAL_SHOTS = 400;
 
 const jitter = (rng: Rng, r: number): Vec3 => [(rng() - 0.5) * r, (rng() - 0.5) * r, (rng() - 0.5) * r];
@@ -30,8 +31,11 @@ export function resolveBeamAttacks(list: Array<{ ev: BeamAttackEvent; t0: number
     if (!from || !to) continue;
     const rng = rngFor('beam', ev.id, ev.seed);
     const kind = ev.weapon === 'laser' ? 'laser' : 'graser';
+    const stride = Math.max(1, Math.ceil(ev.shots / VISUAL_SHOTS));
+    const tags = { side: from.side, unit: from.idx, toUnit: to.idx };
     for (let k = 0; k < ev.shots; k++) {
       const t = t0 + ((t1 - t0) * (k + 0.5)) / ev.shots;
+      const visual = k % stride === 0;
       const origin = add(unitPos(from, t), jitter(rng, 20_000));
       if (to.kind === 'fleet') {
         const ds = to.ships.map((i) => ctx.ships[i]).filter((s) => alive(s, t));
@@ -42,9 +46,9 @@ export function resolveBeamAttacks(list: Array<{ ev: BeamAttackEvent; t0: number
         const aspect = classifyAspect(unitBasis(to, t), incoming, dims(ship));
         const endwall = aspect === 'throat' ? endwallFactor(ship.cls.bow_wall) : aspect === 'kilt' ? endwallFactor(ship.cls.stern_wall) : 1;
         applyHit(ship, t, GRASER_DAMAGE * ASPECT_FACTOR[aspect] * endwall, aspect, rng);
-        if (k < VISUAL_SHOTS) ctx.beams.push({ t, dur: 0.5, kind, from: origin, to: target, side: from.side, aspect, ship: ship.idx });
-      } else if (k < VISUAL_SHOTS) {
-        ctx.beams.push({ t, dur: 0.4, kind, from: origin, to: add(unitPos(to, t), jitter(rng, 20_000)), side: from.side, aspect: null, ship: -1 });
+        if (visual) ctx.beams.push({ t, dur: 0.5, kind, from: origin, to: target, aspect, ship: ship.idx, ...tags });
+      } else if (visual) {
+        ctx.beams.push({ t, dur: 0.4, kind, from: origin, to: add(unitPos(to, t), jitter(rng, 20_000)), aspect: null, ship: -1, ...tags });
       }
     }
     const weapon = ev.weapon === 'lac-mixed' ? 'LAC weapons' : `${ev.weapon}s`;

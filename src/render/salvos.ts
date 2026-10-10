@@ -1,4 +1,5 @@
 import { DrivePhase, packetPositionAt, unitPosition, type BeamEvent, type PacketTrack, type Replay } from '../core/replay';
+import { defenseTimes } from '../core/solver/packets';
 import { dist, type Vec3 } from '../core/vec';
 
 export const TRAIL_CAP = 8_192;
@@ -53,9 +54,13 @@ export function streakTailT(packet: PacketTrack, t: number, phase: DrivePhase, t
 export function beamTheater(beam: BeamEvent, replay: Replay): string | null {
   const ship = replay.ships[beam.ship];
   if (ship) return replay.units[ship.unit].theater;
+  const unit = replay.units[beam.toUnit ?? beam.unit ?? -1];
+  if (unit) return unit.theater;
   if (beam.kind === 'cm-kill' || beam.kind === 'pd-kill') {
-    const lead = beam.kind === 'cm-kill' ? 4 : 1;
-    const packet = replay.packets.find((p) => Math.abs(p.tArrive - lead - beam.t) < 1e-6 && dist(packetPositionAt(p, beam.t), beam.to) < 1e-3);
+    const packet = replay.packets.find((p) => {
+      const at = defenseTimes(p);
+      return Math.abs((beam.kind === 'cm-kill' ? at.cm : at.pd) - beam.t) < 1e-6 && dist(packetPositionAt(p, beam.t), beam.to) < 1e-3;
+    });
     return packet ? replay.units[packet.toUnit].theater : null;
   }
   const candidates = replay.units

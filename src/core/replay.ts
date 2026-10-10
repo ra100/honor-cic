@@ -23,6 +23,8 @@ export interface UnitTrack {
   facing: Vec3;
   up: Vec3;
   rolls: Roll[];
+  /** Formation spacing from the pack, km. */
+  spacing: number;
   tAppear: number;
   tDepart: number;
   appearVia: string | null;

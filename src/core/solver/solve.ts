@@ -8,6 +8,7 @@ import { resolveBeamAttacks } from './beams';
 import { applyEscapes, finalStatus, reconcileOutcomes, subsystemSteps, type TimedOutcome } from './damage';
 import { resolveArrivals, type CombatContext } from './defense';
 import { formationOffsets, toSystem } from './formation';
+import { lacFront } from './lac-wing';
 import { buildUnitTracks } from './kinematics';
 import { narrativeLog } from './log';
 import { DEG, indexBodies } from './orbits';
@@ -25,6 +26,8 @@ function designation(unitName: string, n: number): string {
   const initials = unitName.split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).join('').slice(0, 3);
   return `${initials}-${String(n).padStart(3, '0')}`;
 }
+
+const spacingOf = (u: ScenarioPack['units'][number]): number => baseValue(u.formation.spacing) ?? 10_000;
 
 export function solve(pack: ScenarioPack, tech: TechRegistry = TECH, onProgress: SolveProgress = () => {}): Replay {
   const diagnostics: Issue[] = [];
@@ -48,7 +51,7 @@ export function solve(pack: ScenarioPack, tech: TechRegistry = TECH, onProgress:
   pack.units.forEach((u, ui) => {
     if (u.kind !== 'fleet') return;
     const total = u.ships.reduce((a, e) => a + e.count, 0);
-    const slots = formationOffsets(u.formation.kind, total, baseValue(u.formation.spacing) ?? 10_000, rngFor('formation', u.id));
+    const slots = formationOffsets(u.formation.kind, total, spacingOf(u), rngFor('formation', u.id));
     const entries = [...u.ships].sort((a, b) => Number(b.flagship) - Number(a.flagship));
     let slot = 0;
     let seq = 1;
@@ -82,6 +85,10 @@ export function solve(pack: ScenarioPack, tech: TechRegistry = TECH, onProgress:
         .map((i) => ({ ship: i, offset: (t: number) => toSystem(unitBasis(u, t), ships[i].slot) }));
     },
     side: (id) => unitOf(id).side,
+    front: (id) => {
+      const u = pack.units[unitOf(id).idx];
+      return u.kind === 'lac' ? lacFront(unitOf(id).lacCount[0].count, spacingOf(u)) : null;
+    },
   };
   const firePlans = pack.events.filter((e): e is FirePlanEvent => e.type === 'fire_plan');
   const packets = expandFirePlans(firePlans, tech, timesA, launch);
@@ -113,7 +120,7 @@ export function solve(pack: ScenarioPack, tech: TechRegistry = TECH, onProgress:
   for (const u of units) {
     if (!Number.isFinite(u.tAppear)) continue;
     const p = unitPos(u, u.tAppear);
-    beams.push({ t: u.tAppear, dur: 2.5, kind: 'transit', from: p, to: p, side: u.side, aspect: null, ship: -1 });
+    beams.push({ t: u.tAppear, dur: 2.5, kind: 'transit', from: p, to: p, side: u.side, aspect: null, ship: -1, unit: u.idx, toUnit: u.idx });
   }
   log.push(...narrativeLog(pack, times, units));
   log.sort((a, b) => a.t - b.t);
@@ -126,7 +133,7 @@ export function solve(pack: ScenarioPack, tech: TechRegistry = TECH, onProgress:
   }));
   const unitTracks: UnitTrack[] = units.map((u, i) => ({
     id: u.id, idx: u.idx, name: u.name, kind: u.kind, side: u.side, theater: u.theater, segments: u.segments,
-    facing: u.facing, up: u.up, rolls: u.rolls, tAppear: u.tAppear, tDepart: u.tDepart,
+    facing: u.facing, up: u.up, rolls: u.rolls, spacing: spacingOf(pack.units[i]), tAppear: u.tAppear, tDepart: u.tDepart,
     appearVia: pack.units[i].present.from_via, departVia: pack.units[i].present.until_via,
     shipIdx: u.ships, lacClasses: u.lacClasses, lacCount: u.lacCount,
   }));
