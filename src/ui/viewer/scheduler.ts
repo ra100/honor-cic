@@ -1,7 +1,7 @@
 import type { ViewerState } from './model';
 
-export function continuousScene(s: Pick<ViewerState, 'playing' | 'scale' | 'demo' | 'reducedMotion'>, cameraMoving = false): boolean {
-  return s.playing || (s.scale === 'ship' && s.demo !== 'none' && !s.reducedMotion) || cameraMoving;
+export function continuousScene(s: Pick<ViewerState, 'playing' | 'scale' | 'fireStartedAt'>, moving = false): boolean {
+  return s.playing || (s.scale === 'ship' && s.fireStartedAt !== null) || moving;
 }
 
 export interface FrameClock {

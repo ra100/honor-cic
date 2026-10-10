@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 /** Collects page errors and console errors so each test can assert a clean run. */
 export function watchErrors(page: Page): string[] {
@@ -19,8 +19,12 @@ export async function openBattle(page: Page, id: string): Promise<void> {
   await page.locator('.viewer').waitFor({ state: 'visible', timeout: 90_000 });
 }
 
-export async function openControls(page: Page): Promise<void> {
-  const button = page.getByRole('button', { name: 'Controls', exact: true });
-  if (await button.getAttribute('aria-expanded') !== 'true') await button.click();
-  await expect(page.locator('#menu-controls')).toBeVisible();
+type Patch = Record<string, unknown>;
+/** Drive the viewer store directly when a test is about the scene, not the control that got it there. */
+export async function setState(page: Page, patch: Patch): Promise<void> {
+  await page.evaluate((p) => window.__honorCic!.store.set(p as never), patch);
+}
+
+export async function state<T = unknown>(page: Page, key: string): Promise<T> {
+  return page.evaluate((k) => (window.__honorCic!.store.get() as unknown as Record<string, unknown>)[k], key) as Promise<T>;
 }

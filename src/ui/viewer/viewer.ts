@@ -18,7 +18,7 @@ import { clear, h } from '../dom';
 import { CATALOG_HREF } from '../router';
 import { createStore, type Store } from '../store';
 import { buildHud, type Live } from './hud';
-import { advance, eventIndex, initialState, knownSide, perceivedSelection, phaseMarks, type ViewerState } from './model';
+import { advance, autoSpeed, eventIndex, initialState, knownSide, perceivedSelection, phaseMarks, type ViewerState } from './model';
 import { watchReducedMotion } from './motion';
 import { continuousScene, renderScheduler } from './scheduler';
 
@@ -28,7 +28,6 @@ declare global {
 
 const WEBGL_TEXT = 'This viewer needs WebGL. Turn on hardware acceleration or try another browser.';
 const SCRUB_CUT_S = 30;
-const DEMO_PERIOD_S = 4;
 
 function renderError(root: HTMLElement, lines: string[], title = 'This replay could not be computed'): void {
   clear(root);
@@ -191,7 +190,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     if (!start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
     const r = hud.canvas.getBoundingClientRect();
     const hit = views.get(store.get().scale)?.pick(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
-    if (hit !== null && hit !== undefined) store.set({ selectedShip: hit, selectedClass: null, drawer: 'inspector', menu: 'none' });
+    if (hit !== null && hit !== undefined) store.set({ selectedShip: hit, selectedClass: null, menu: 'none' });
   };
   hud.canvas.addEventListener('pointerdown', onPointerDown);
   hud.canvas.addEventListener('pointerup', onPointerUp);
@@ -201,19 +200,16 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
   let live: Live = { frame, samplingText: null, scaleNote: '', notice: plotFailure };
   const renderScene = (dt: number): boolean => {
     let s = store.get();
+    const cinematicRate = s.camera === 'director' && s.speed === 'auto' ? directorSpeed(shots, s.t) : null;
+    const rate = s.speed === 'auto' ? cinematicRate ?? autoSpeed(ix, s.t) : s.speed;
     if (s.playing) {
-      const cinematicRate = s.camera === 'director' && s.speed === 'auto' ? directorSpeed(shots, s.t) : null;
       store.set(advance(s, dt, ix, replay.duration_s, cinematicRate));
-      s = store.get();
-    }
-    if (s.scale === 'ship' && s.demo !== 'none' && !s.reducedMotion) {
-      store.set({ demoProgress: (s.demoProgress + dt / DEMO_PERIOD_S) % 1 });
       s = store.get();
     }
     sampleFrame(replay, s.t, frame);
     const known = perceivedSelection(replay, s);
     if (known !== s.selectedShip) {
-      store.set({ selectedShip: known, drawer: s.drawer === 'inspector' ? 'none' : s.drawer });
+      store.set({ selectedShip: known });
       s = store.get();
     }
 
@@ -221,8 +217,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     if (s.camera === 'director' && shots.length) {
       const shot = shotAt(shots, s.t)!;
       if (shot.scale !== s.scale || shot.theater !== s.theater) {
-        const menu = s.menu === 'density' && shot.scale !== 'engagement' ? 'none' : s.menu;
-        store.set({ scale: shot.scale, theater: shot.theater, drawer: 'none', menu, demo: 'none' });
+        store.set({ scale: shot.scale, theater: shot.theater });
         s = store.get();
       }
       const jumped = Math.abs(s.t - prevT) > SCRUB_CUT_S;
@@ -248,22 +243,21 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     }
     prevT = s.t;
 
-    hud.render(s, { ...live, frame, notice: actionFailure ?? live.notice });
+    hud.render(s, { ...live, frame, rate, notice: actionFailure ?? live.notice });
     const plotInsets = hud.plotInsets();
-    live = { frame, samplingText: null, scaleNote: '', notice: actionFailure ?? plotFailure };
+    live = { frame, rate, samplingText: null, scaleNote: '', notice: actionFailure ?? plotFailure };
     const view = views.get(s.scale);
     let cameraMoving = false;
     let viewAnimating = false;
     if (view && engine && labelLayer) {
       for (const [id, v] of views) if (v.controls) v.controls.enabled = id === s.scale;
-      if (view instanceof ShipView) view.setDemo(s.demo, s.demoProgress);
       const scaleView: ScaleView = view;
       const fireT = s.fireStartedAt === null ? null : (performance.now() - s.fireStartedAt) / 1000;
       if (fireT !== null && fireT > FIRE_DEMO_S) store.set({ fireStartedAt: null });
       const ctx: ViewContext = {
         replay, pack, tech: TECH, frame, layers: s.layers, perceived: s.perceived, density: s.density, theater: s.theater,
         selectedShip: s.selectedShip, selectedClass: s.selectedClass, reducedMotion: s.reducedMotion,
-        plotInsets, shipFraming: s.shipFraming,
+        plotInsets,
         focusSide: s.perceived.enabled ? s.perceived.side : pack.meta.sides[0].id,
         systemFocus: s.systemFocus,
         ship: { roll: s.shipRoll, pods: s.shipPods, sails: s.shipSails, fireT: fireT !== null && fireT <= FIRE_DEMO_S ? fireT : null },
@@ -277,7 +271,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       rendered++;
       labelLayer.update(view.labels(), view.camera, hud.canvas.clientWidth, hud.canvas.clientHeight, plotInsets);
       const st = view.status();
-      live = { frame, samplingText: st.samplingText, scaleNote: st.scaleNote, notice: actionFailure ?? st.notice };
+      live = { frame, rate, samplingText: st.samplingText, scaleNote: st.scaleNote, notice: actionFailure ?? st.notice };
       viewAnimating = scaleView.animating?.() ?? false;
     }
     hud.render(s, live);

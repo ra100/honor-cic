@@ -6,8 +6,6 @@ import {
 import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
 import { fmtCount } from '../../core/units';
-import type { ShipFraming } from '../../render/framing';
-import type { ShipDemo } from '../../render/scales/ship-view';
 import type { LayerId, ScaleId, SystemFocus } from '../../render/scales/types';
 import { logLine } from '../format';
 
@@ -16,7 +14,7 @@ export const DENSITIES = [1, 2, 4, 8, 16] as const;
 export type Speed = number | 'auto';
 
 export const DEFAULT_LAYERS: Record<LayerId, boolean> = {
-  celestial: true, truth: true, commander: false, engagement: true, protection: false, comms: true, damage: true,
+  celestial: true, truth: true, commander: false, engagement: true, protection: true, comms: true, damage: true,
 };
 
 export interface ViewerState {
@@ -33,11 +31,7 @@ export interface ViewerState {
   density: number;
   selectedShip: number | null;
   selectedClass: string | null;
-  shipFraming: ShipFraming;
-  shipReplay: boolean;
   logSide: string;
-  demo: ShipDemo;
-  demoProgress: number;
   systemFocus: SystemFocus;
   shipRoll: boolean;
   shipPods: boolean;
@@ -46,8 +40,9 @@ export interface ViewerState {
   fireStartedAt: number | null;
   reducedMotion: boolean;
   motionOverride: boolean | null;
-  drawer: 'none' | 'forces' | 'log' | 'inspector';
-  menu: 'none' | 'layers' | 'view' | 'density' | 'shots' | 'controls';
+  /** Narrow screens: Forces or the CIC log as a sheet. */
+  drawer: 'none' | 'forces' | 'log';
+  menu: 'none' | 'shots' | 'layers' | 'key';
 }
 
 export function initialState(pack: ScenarioPack, reducedMotion: boolean): ViewerState {
@@ -56,23 +51,14 @@ export function initialState(pack: ScenarioPack, reducedMotion: boolean): Viewer
     t: 0, playing: false, speed: 'auto', scale: hasShots ? pack.meta.shots[0].scale : 'engagement', camera: hasShots ? 'director' : 'free', follow: true,
     theater: hasShots ? pack.meta.shots[0].theater : pack.meta.theaters[0].id, layers: { ...DEFAULT_LAYERS },
     perceived: { enabled: false, side: pack.meta.sides[0].id }, density: 4, selectedShip: null, selectedClass: null,
-    shipFraming: 'hull', shipReplay: false, logSide: 'all', demo: 'none', demoProgress: 0,
+    logSide: 'all',
     systemFocus: 'primary', shipRoll: false, shipPods: true, shipSails: false, fireStartedAt: null,
     reducedMotion, motionOverride: null, drawer: 'none', menu: 'none',
   };
 }
 
 export function scaleSelection(scale: ScaleId): Partial<ViewerState> {
-  return { scale, camera: 'free', drawer: 'none', menu: 'none', demo: 'none' };
-}
-
-export function composition(s: Pick<ViewerState, 'scale' | 'shipReplay'>): {
-  battle: boolean; engagement: boolean; system: boolean; ship: boolean; transport: boolean;
-} {
-  return {
-    battle: s.scale !== 'ship', engagement: s.scale === 'engagement', system: s.scale === 'system',
-    ship: s.scale === 'ship', transport: s.scale !== 'ship' || s.shipReplay,
-  };
+  return { scale, camera: 'free', drawer: 'none', menu: 'none', fireStartedAt: null };
 }
 
 export function shipClassId(r: Replay, s: Pick<ViewerState, 'selectedShip' | 'selectedClass'>): string | null {

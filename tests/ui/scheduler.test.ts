@@ -49,12 +49,11 @@ describe('dirty-only rendering', () => {
     clock.frame(1200);
     expect(draw).toHaveBeenLastCalledWith(1200, 0.1);
     expect(clock.pending()).toBe(0);
-    const idle = { playing: false, scale: 'engagement' as const, demo: 'none' as const, reducedMotion: false };
+    const idle = { playing: false, scale: 'engagement' as const, fireStartedAt: null };
     expect(continuousScene(idle)).toBe(false);
     expect(continuousScene({ ...idle, playing: true })).toBe(true);
-    expect(continuousScene({ ...idle, scale: 'ship', demo: 'roll' })).toBe(true);
-    expect(continuousScene({ ...idle, scale: 'ship', demo: 'pods', reducedMotion: true })).toBe(false);
-    expect(continuousScene({ ...idle, demo: 'pods' })).toBe(false);
+    expect(continuousScene({ ...idle, scale: 'ship', fireStartedAt: 1000 })).toBe(true);
+    expect(continuousScene({ ...idle, fireStartedAt: 1000 })).toBe(false);
     expect(continuousScene(idle, true)).toBe(true);
   });
 
