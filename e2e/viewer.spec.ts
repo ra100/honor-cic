@@ -43,8 +43,9 @@ test('Manticore opens in the director inside the Site A console', async ({ page,
     await expect(page.locator('#forces')).toContainText('Inside limit');
   }
   await setState(page, { t: 120 });
-  await expect(page.locator('#log li').first()).toBeAttached();
-  await page.locator('#log li').first().click({ force: true });
+  if (isMobile) await page.locator('#hudToggles').getByRole('button', { name: 'Log' }).click();
+  await expect(page.locator('#log li').first()).toBeVisible();
+  await page.locator('#log li').first().click();
   expect(await state<number>(page, 't')).toBeLessThan(120);
   expect(errors).toEqual([]);
 });
@@ -77,12 +78,16 @@ test('system presets frame the binary, the companion and the outer orbits', asyn
   expect(errors).toEqual([]);
 });
 
-test('ship detail context tools drive the wedge demos', async ({ page }) => {
+test('ship detail context tools drive the wedge demos', async ({ page, isMobile }) => {
   const errors = watchErrors(page);
   await openBattle(page, 'manticore');
   await page.getByRole('tab', { name: 'Ship detail' }).click();
+  const classData = page.locator('#hudToggles').getByRole('button', { name: 'Class data' });
+  if (isMobile) await classData.click();
   await expect(page.locator('.object-panel')).toBeVisible();
   await expect(page.locator('.object-panel .obj-title')).toContainText('Invictus');
+  // On a phone the class sheet covers the demo tools until it is closed again.
+  if (isMobile) await classData.click();
   await page.getByRole('button', { name: 'Belly-up roll' }).click();
   await expect(page.getByRole('button', { name: 'Belly-up roll' })).toHaveClass(/\bactive\b/);
   expect(await state(page, 'shipRoll')).toBe(true);
