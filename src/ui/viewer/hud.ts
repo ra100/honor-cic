@@ -70,7 +70,16 @@ function icon(d: string, stroke = false): SVGSVGElement {
   return svg;
 }
 const speedText = (s: number): string => (s === 0.25 ? '¼×' : s === 0.5 ? '½×' : `${s}×`);
-const INTERACTIVE = new Set(['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'A', 'SUMMARY']);
+const ACTIVATES = new Set(['BUTTON', 'A', 'SUMMARY']);
+/** Shortcuts yield to typing, to a focused control's own Space or Enter, and to the scrubber's arrows. */
+function keyBelongsToTarget(e: KeyboardEvent): boolean {
+  const el = e.target as HTMLElement;
+  const input = el instanceof HTMLInputElement ? el : null;
+  if (el.isContentEditable || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+  if (input && !['range', 'checkbox', 'radio', 'button'].includes(input.type)) return true;
+  if ((ACTIVATES.has(el.tagName) || input) && (e.key === ' ' || e.key === 'Enter')) return true;
+  return input?.type === 'range' && e.key.startsWith('Arrow');
+}
 
 function setText(el: HTMLElement, text: string): void {
   if (el.textContent !== text) el.textContent = text;
@@ -328,8 +337,7 @@ export function buildHud(d: HudDeps): Hud {
       else set({ selectedShip: null });
       return;
     }
-    const target = e.target as HTMLElement;
-    if (INTERACTIVE.has(target.tagName) || target.isContentEditable || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (keyBelongsToTarget(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     const step = e.shiftKey ? 60 : 1;
     switch (e.key) {
       case ' ': e.preventDefault(); togglePlay(); break;
