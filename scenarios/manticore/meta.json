@@ -35,7 +35,7 @@
     { "id": "junction", "label": "Junction terminus", "anchor_body": "junction" }
   ],
   "shots": [
-    { "id": "system", "label": "The system", "desc": "Manticore-A, the 22 LM hyper limit and Sphinx. Second Fleet is already inside the limit.", "t0": 0, "theater": "sphinx", "scale": "system", "subject": ["manticore-a"], "distance_km": 1.2e9, "elev_deg": 35, "azim_deg": 42, "orbit_deg_per_min": 2 },
+    { "id": "system", "label": "The system", "desc": "Manticore-A, the 22 LM hyper limit and Sphinx. Second Fleet is already inside the limit.", "t0": 0, "theater": "sphinx", "scale": "system", "subject": ["manticore-a"], "distance_km": 2.3e9, "elev_deg": 35, "azim_deg": 42, "orbit_deg_per_min": 2 },
     { "id": "walls", "label": "Walls of battle", "desc": "Home Fleet and Second Fleet, 65 Mkm apart, open fire.", "t0": 40, "theater": "sphinx", "scale": "engagement", "subject": ["home-fleet", "second-fleet"], "distance_km": 9e7, "elev_deg": 20, "azim_deg": 142, "orbit_deg_per_min": 3 },
     { "id": "hf-impact", "label": "Home Fleet under fire", "desc": "Havenite laserheads reach Home Fleet.", "t0": { "ref": "fp-2f-hf", "anchor": "arrival", "offset_s": -40 }, "theater": "sphinx", "scale": "engagement", "subject": ["home-fleet"], "distance_km": 15000000, "elev_deg": 15, "azim_deg": -168, "orbit_deg_per_min": 6 },
     { "id": "sf-impact", "label": "Second Fleet hit", "desc": "Home Fleet's salvos arrive on Second Fleet's wall.", "t0": { "ref": "fp-hf-2f", "anchor": "arrival", "offset_s": -20 }, "theater": "sphinx", "scale": "engagement", "subject": ["second-fleet"], "distance_km": 12000000, "elev_deg": 25, "azim_deg": -28, "orbit_deg_per_min": 4 },
