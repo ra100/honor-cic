@@ -120,7 +120,8 @@ export function buildHud(d: HudDeps): Hud {
     id: `scale-${sc.id}`, class: 'tab', type: 'button', role: 'tab', 'aria-selected': 'false', title: `${sc.label} (${i + 1})`, onclick: () => selectScale(sc.id),
   }, sc.label));
   const ident = h('div', { class: 'ident' },
-    h('p', { class: 'eyebrow' }, h('a', { class: 'cat-link', href: CATALOG_HREF }, 'Catalog'), ` · CIC tactical plot · ${pack.meta.location}${date ? ` · ${date}` : ''}`),
+    h('p', { class: 'eyebrow' }, h('a', { class: 'cat-link', href: CATALOG_HREF }, 'Catalog'),
+      h('span', { class: 'eyebrow-rest' }, ` · CIC tactical plot · ${pack.meta.location}${date ? ` · ${date}` : ''}`)),
     h('h1', null, pack.meta.title), theaterLine,
     h('nav', { class: 'tabs', role: 'tablist', 'aria-label': 'Scale' }, tabs));
   const clockT = h('div', { class: 'clock-t num' });
@@ -190,8 +191,8 @@ export function buildHud(d: HudDeps): Hud {
   // Transport (A report §7.7).
   const play = h('button', { class: 'tb icon', id: 'btnPlay', type: 'button', 'aria-label': 'Play', title: 'Play or pause (Space)', onclick: togglePlay }, icon(ICON.play));
   const back = h('button', { class: 'tb icon wide-only', type: 'button', 'aria-label': 'Back 30 seconds of battle time', onclick: () => set({ t: Math.max(0, store.get().t - 30) }) }, icon(ICON.back));
-  const prev = h('button', { class: 'tb icon', type: 'button', 'aria-label': 'Previous phase', title: 'Previous phase ([)', onclick: () => set({ t: prevPhase(d.marks, store.get().t) }) }, '‹');
-  const next = h('button', { class: 'tb icon', type: 'button', 'aria-label': 'Next phase', title: 'Next phase (])', onclick: () => { const t = nextPhase(d.marks, store.get().t); if (t !== null) set({ t }); } }, '›');
+  const prev = h('button', { class: 'tb icon phone-hide', type: 'button', 'aria-label': 'Previous phase', title: 'Previous phase ([)', onclick: () => set({ t: prevPhase(d.marks, store.get().t) }) }, '‹');
+  const next = h('button', { class: 'tb icon phone-hide', type: 'button', 'aria-label': 'Next phase', title: 'Next phase (])', onclick: () => { const t = nextPhase(d.marks, store.get().t); if (t !== null) set({ t }); } }, '›');
   const tclock = h('span', { class: 'tclock' });
   const phasesBar = h('div', { class: 'phases' }, phaseSpans(d.marks, replay.duration_s).map((span) =>
     h('div', { style: `width:${span.width}%`, title: span.label }, h('span', null, span.label))));
@@ -213,17 +214,17 @@ export function buildHud(d: HudDeps): Hud {
   }, label);
   const director = h('button', { class: 'tb', type: 'button', disabled: d.shots.length === 0, title: 'Director camera (D) or free camera (F)',
     onclick: () => set({ camera: store.get().camera === 'director' ? 'free' : 'director', menu: 'none' }) }, 'Director');
-  const menuButtons = { shots: menuBtn('shots', 'Shots'), layers: menuBtn('layers', 'Layers', 'wide-only'), key: menuBtn('key', 'Key') };
-  const fullscreen = h('button', { class: 'tb icon', type: 'button', 'aria-label': 'Fullscreen', title: 'Fullscreen', onclick: () => d.onFullscreen() }, icon(ICON.full, true));
+  const menuButtons = { shots: menuBtn('shots', 'Shots'), layers: menuBtn('layers', 'Layers'), key: menuBtn('key', 'Key') };
+  const fullscreen = h('button', { class: 'tb icon phone-hide', type: 'button', 'aria-label': 'Fullscreen', title: 'Fullscreen', onclick: () => d.onFullscreen() }, icon(ICON.full, true));
   const transport = h('footer', { id: 'transport', class: 'hud' },
     play, back, prev, next, tclock, scrub, speed, director, menuButtons.shots, menuButtons.layers, menuButtons.key, fullscreen);
 
-  // Narrow screens: Forces and Log open as sheets.
+  // Narrow screens: Forces, Log and the ship's class data open as sheets.
   const sheetBtn = (id: Exclude<ViewerState['drawer'], 'none'>, label: string) => h('button', {
     class: 'tb', type: 'button', 'aria-expanded': 'false', onclick: () => set({ drawer: store.get().drawer === id ? 'none' : id, menu: 'none' }),
   }, label);
-  const sheetButtons = { forces: sheetBtn('forces', 'Forces'), log: sheetBtn('log', 'Log') };
-  const hudToggles = h('div', { id: 'hudToggles', class: 'hud' }, sheetButtons.forces, sheetButtons.log);
+  const sheetButtons = { forces: sheetBtn('forces', 'Forces'), log: sheetBtn('log', 'Log'), ship: sheetBtn('ship', 'Class data') };
+  const hudToggles = h('div', { id: 'hudToggles', class: 'hud' }, sheetButtons.forces, sheetButtons.log, sheetButtons.ship);
 
   // Menus (A report §7.8).
   const menu = (id: Exclude<ViewerState['menu'], 'none'>, title: string, ...content: Array<HTMLElement | HTMLElement[] | null>) =>
@@ -490,7 +491,11 @@ export function buildHud(d: HudDeps): Hud {
         toggleClass(button, 'on', s.menu === id);
       }
       for (const [id, element] of Object.entries(menus)) element.hidden = s.menu !== id;
-      for (const [id, button] of Object.entries(sheetButtons)) toggleClass(button, 'on', s.drawer === id);
+      for (const [id, button] of Object.entries(sheetButtons)) {
+        toggleClass(button, 'on', s.drawer === id);
+        setAttr(button, 'aria-expanded', String(s.drawer === id));
+        button.hidden = (id === 'ship') !== ship;
+      }
       // Layers menu state.
       for (const layer of layerToggles) layer.box.checked = s.layers[layer.id];
       for (const b of densityButtons) toggleClass(b.el, 'on', b.n === s.density);

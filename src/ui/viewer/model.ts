@@ -41,7 +41,8 @@ export interface ViewerState {
   reducedMotion: boolean;
   motionOverride: boolean | null;
   /** Narrow screens: Forces or the CIC log as a sheet. */
-  drawer: 'none' | 'forces' | 'log';
+  /** Narrow screens: which panel is open as a bottom sheet. */
+  drawer: 'none' | 'forces' | 'log' | 'ship';
   menu: 'none' | 'shots' | 'layers' | 'key';
 }
 
