@@ -1,3 +1,5 @@
+> **Superseded on 2026-10-10.** The owner rejected the quiet "CIC bezel" direction this audit recommends; the app now follows the two original visualizers as recorded in `DESIGN.md`. Kept as history; do not act on it.
+
 ```text
 /make-plan Redesign honor-cic's presentation layer. Current design failed a Dieter Rams audit at 13/30, with critical gaps in usefulness (#2), aesthetics (#3), understandability (#4), and unobtrusive composition (#5).
 

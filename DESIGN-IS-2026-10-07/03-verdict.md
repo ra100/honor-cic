@@ -1,3 +1,5 @@
+> **Superseded on 2026-10-10.** The owner rejected the quiet "CIC bezel" direction this audit recommends; the app now follows the two original visualizers as recorded in `DESIGN.md`. Kept as history; do not act on it.
+
 # honor-cic: presentation redesign
 
 **REDESIGN the presentation layer: the current app scores 13/30 and fails aesthetic and unobtrusive composition, while its replay, scenario, provenance, and tactical-view foundations should be preserved.**

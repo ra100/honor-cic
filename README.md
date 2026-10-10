@@ -2,12 +2,15 @@
 
 Honorverse fleet-action reconstructions, plus a non-canon Training example. Every number in the app carries its evidence label.
 
-- **Three workspaces.** System keeps navigation and system context compact. Engagement keeps formations, sampled missile clouds, laserheads, wedges and Apollo links in the foreground, with forces, log and inspector opened only when needed. Ship is a class-inspection workspace with hull or defensive-envelope framing, class figures, and roll, pod and broadside demos. Its replay controls are opt-in. Compact plots retain identity, dimensions and active-demo labels; Class figures and sources keeps accelerations, all mount aspects, capacities and defensive dimensions accessible.
-- **Director or free camera.** Each battle pack scripts its own shots. Drag the plot to take the camera, and press `D` to give it back. In free camera, **Follow** (`G`) keeps your angle and distance while the view moves with the selected fleet or the current engagement.
-- **Actual or perceived.** Show ground truth, or one commander's delayed sensor picture with contact ages and uncertainty rings.
-- **Missile density.** Engagement offers 1:1 to 1:16. The readout always shows the ratio in use. On narrower screens, theater, density and shots move into Controls.
-- **CIC log, forces and inspector.** Ship status, lost subsystems, and the source behind every figure.
-- **Motion and idle.** Paused plots redraw only after a control, resize or camera change; their drawing buffer stays available for repaints and captures. Active replay, demos and camera settling still animate. The live device reduced-motion setting is followed until you make an explicit choice in View; reduced-motion demos have a manual position slider.
+The look and controls follow two earlier visualizers of the Battle of Manticore: the cinematic plot of [Site A](https://battle-of-manticore.muddy-glade-edee.workers.dev) and the System / Engagement / Ship detail structure of [Site B](https://battle-of-manticore.ra100x.chatgpt.site). `DESIGN.md` records how.
+
+- **System.** The star system as Site A draws it: the filmic star, the hyper-limit globe, orbits, the binary, the Junction and its resonance zone, with Site B's lit planets, fleet callouts and camera presets (Manticore-A, Manticore-B, Binary & junction, Outer orbits).
+- **Engagement.** Range rings centred on your side's fleet, the hyper-limit arc, fleet rings with velocity arrows, and every missile packet as streaks on its solved path, with laserheads, beams, defensive kills, ship losses and Apollo telemetry from the replay. Missile density runs from 1:1 to 1:16, and the readout says what is drawn.
+- **Ship detail.** Each class hull at true scale inside Site B's wedge: double stress bands, sidewalls, Keyhole platforms, pods on tethers, transit sails and the fire / defense demo, with the class figures and their sources beside it.
+- **Director or free camera.** Each battle pack scripts its own shots, and the director adds captioned shots for every launch, flight, impact and close-range pass. Drag the plot to take the camera and press `D` to give it back. **Follow** (`G`), or a double-click on a ship, keeps your angle and distance while the view moves with that force.
+- **Actual or perceived.** Ground truth, or one commander's delayed sensor picture with contact ages and uncertainty rings.
+- **CIC console.** The battle clock and phase, tallies of missiles in space, stopped, detonated and ships lost, Forces with per-role strength bars, the CIC log, a ship inspector, a scale bar and an after-action debrief when the replay ends.
+- **Idle when paused.** A paused plot redraws only after input, a resize or a camera move; replay, demos and camera easing animate.
 
 ## Quick start
 
@@ -37,16 +40,27 @@ flowchart LR
   R --> U["src/ui: catalog, viewer HUD"]
 ```
 
-- `src/core` never touches the DOM or three.js and never calls `Math.random`; `tests/architecture.test.ts` enforces this. Given a pack, the solver produces the same replay every time. Scrubbing samples that replay at the exact requested time. Engagement spreads individual ship glyphs around their true fleet centres for readability, labelled `formation spread [S]`; this display-only spacing changes no positions, counts, ranges or picking identities. Portrait starts frame the fleet separation vertically, with directional formation budgets that keep glyphs and neighboring fleets distinct.
+- `src/core` never touches the DOM or three.js and never calls `Math.random`; `tests/architecture.test.ts` enforces this. Given a pack, the solver produces the same replay every time. Scrubbing samples that replay at the exact requested time. Engagement draws a crowded fleet as a bounded, class-grouped display formation around its true centre, captioned [S] in the readout; the spacing changes no positions, counts, ranges or picking identities.
 - Ship and missile figures come from the project's technical reference, `docs/honorverse-master-technical-specification.md` (cited in code as `MTS §n`).
 - The catalog loads without the plot renderer. Entering a battle loads the viewer, then computes the replay in a worker. Leaving the route cancels solving and disposes its controls, observers and rendering schedule; stale load or solve results cannot mount.
 - Director + Auto uses event-focused cinematic pacing. Manual speeds and Free + Auto keep their existing behavior.
 
-## Controls and accessibility
+## Controls
 
-The scale tabs have one Tab stop; Left/Right, Home and End change scales. Controls contains Director, Free, Follow, Reset view, Fullscreen, Notes and Help. Layers appears once. Escape closes contextual panels and menus and returns focus to their opener; Notes and Help use native dialogs.
+| Input | Action |
+|---|---|
+| Drag, scroll, right-drag | Orbit, zoom, pan (takes the free camera) |
+| Click / double-click a ship | Inspect it / follow its force |
+| `Space` | Play or pause |
+| `←` `→` (with `Shift`) | Step 1 s (60 s) |
+| `[` `]` | Previous or next phase |
+| `+` `−` | Faster or slower |
+| `1` `2` `3` | System, Engagement, Ship detail |
+| `D` / `F` / `G` | Director / free camera / Follow |
+| `P` | Actual or perceived picture |
+| `?` / `Esc` | Key / close menus and the debrief |
 
-All controls have at least 44×44 CSS-pixel targets and visible cyan focus. Workspaces reflow at phone, intermediate and desktop widths, reserving the measured HUD footprint when framing the plot and placing labels. Sources also open by keyboard or tap. Notes format headings, lists, emphasis, code and HTTP(S) links; embedded HTML remains text.
+Shots, Layers and Key open from the transport bar. Below 860 px wide, Forces, the log and the ship's class data open as sheets from the toggles under the top bar, and below 520 px the scrubber gets its own row.
 
 ## Evidence policy
 
@@ -69,7 +83,7 @@ All controls have at least 44×44 CSS-pixel targets and visible cyan focus. Work
    | File | Holds |
    |---|---|
    | `meta.json` | Title, date, sides and colours, frame, phases, theaters, director shots, sources |
-   | `bodies.json` | Stars, planets, termini, with hyper limits and exclusions |
+   | `bodies.json` | Stars, planets, termini, with hyper limits, exclusions and resonance zones |
    | `forces.json` | Fleets and LAC groups: classes, counts, formation, state anchor, presence |
    | `timeline.json` | Fire plans, beam attacks, ranges, rolls, escapes, canon outcomes |
    | `notes.md` | Reconstruction choices and caveats, shown in the viewer's Notes dialog |
@@ -78,7 +92,7 @@ All controls have at least 44×44 CSS-pixel targets and visible cyan focus. Work
 4. If the battle states an interception share, run `npm run calibrate -- <id>` and record every changed value in `notes.md`.
 5. Run `npm run dev` and open `http://localhost:5173/#/battle/<id>`. The catalog lists the pack automatically.
 
-Side colours must reach 4.5:1 contrast on `#020208`.
+Pick side colours that stay readable as text on the near-black plot (`#020208`); the Manticore pack uses `#00ff66` and `#ff0033`.
 
 ## Deploy
 
