@@ -241,13 +241,13 @@ describe('EngagementView', () => {
     expect(v.labels().filter((l) => l.key.startsWith('unit:') && l.offset)).toHaveLength(0);
   });
 
-  it('bounds LAC samples and uses distinct chevrons without pretending they are physical slots', () => {
+  it('bounds LAC dots and says the squadron layout is a display aid', () => {
     const original = replay.units[0];
     const local = { ...replay, units: [{ ...original, kind: 'lac' as const, shipIdx: [], lacCount: [{ t: 0, count: 50_000 }] }, ...replay.units.slice(1)] };
     const v = new EngagementView(pack, local, null);
     v.update({ ...ctx(0), replay: local, frame: sampleFrame(local, 0, createFrame(local)) });
     expect(v.drawCounts().lacDots).toBe(4_000);
-    expect(v.status().scaleNote).toContain('Packet/LAC spread');
+    expect(v.status().scaleNote).toContain('squadron of 12 on its wing\'s disc, also four times life size');
   });
 });
 
