@@ -178,7 +178,7 @@ export function scaleBar(kmPerPx: number): { widthPx: number; label: string } | 
     label = `${SCALE_FMT.format(lm)} light-minutes`;
   } else {
     val = snap125(km);
-    label = val >= 1e6 ? `${SCALE_FMT.format(val / 1e6)} million km` : `${SCALE_FMT.format(val)} km`;
+    label = val >= 1e6 ? `${SCALE_FMT.format(val / 1e6)} million km` : val < 1 ? `${SCALE_FMT.format(val * 1000)} m` : `${SCALE_FMT.format(val)} km`;
   }
   return { widthPx: Number((val / kmPerPx).toFixed(1)), label };
 }

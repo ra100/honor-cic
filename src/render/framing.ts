@@ -7,8 +7,6 @@ export interface PlotInsets {
   left: number;
 }
 
-export type ShipFraming = 'hull' | 'defenses';
-
 export interface PlotRect {
   x: number;
   y: number;
