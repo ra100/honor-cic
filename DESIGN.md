@@ -36,10 +36,12 @@ Chakra Petch (`--f-display`) for names, eyebrows, buttons and labels; IBM Plex S
 - **Top bar**: identity (catalog link, eyebrow, title, theater line, Site B scale tabs) | big clock with phase name and speed chip | tallies (missiles in space by side, stopped by defenses, laserheads detonated, ships lost).
 - **Left**: Forces, per fleet: commander, inside or outside the hyper limit, role bars (operational fill, crippled in amber), counts.
 - **Right**: inspector card for the selected ship above the CIC log (newest first, side-coloured, click to seek). In Ship detail the right column is Site B's object panel.
-- **Bottom left**: shot caption (amber in Director, cyan in the free camera), Site B's context tools for the current view (system presets; Follow and Reset; ship class, Belly-up roll, Pods, Transit sails, Fire / defense demo) and a one-line readout (missile sampling, ship demo status).
+- **Bottom left**, stacked in one column that grows upward so nothing overlaps: a one-line readout (missile sampling, ship demo status), Site B's context tools for the current view (system presets; Follow and Reset; ship class, Belly-up roll, Pods, Transit sails, Fire / defense demo) and the shot caption (amber in Director, cyan in the free camera). Plot labels keep clear of these boxes.
+- **Bottom right**: Site A's scale bar, snapped to 1, 2 or 5 of a decade in metres, km, million km or light-minutes.
+- **End of the replay**: Site A's after-action debrief with each force's losses, launch totals and the peak missiles in space, offering Free look or Replay.
 - **Bottom**: transport: play, back 30 s, phase steps, the phase-segmented scrubber with salvo ticks, speed, Director, Shots, Layers (layers, missile density, Actual or Perceived, commander, theater, reduce motion), Key (legend, keys, evidence labels, notes and sources), fullscreen.
 - **Panels** are Site A glass (72 % with 6 px blur), 1 px hairline, 9 px corner brackets top-left and bottom-right. Buttons are Site A's 32 px uppercase `.tb`; Site B's rounded context buttons are kept for the view tools.
-- Under 860 px, Forces and the log become sheets behind two toggles, the caption drops its description and the tallies form one row.
+- Under 860 px, the title block folds into the top bar, the tallies form one row, and Forces, the log and (in Ship detail) the class data become sheets behind toggles; the caption drops its description. Under 520 px the scrubber gets its own row.
 
 ## Plot labels
 
