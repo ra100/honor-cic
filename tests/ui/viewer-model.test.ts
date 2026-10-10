@@ -3,7 +3,7 @@ import { createFrame, sampleFrame, ShipStatus } from '../../src/core/replay';
 import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
 import {
-  advance, autoSpeed, composition, eventIndex, forcesModel, initialState, inspectorModel, logModel, nextPhase, phaseMarks, prevPhase,
+  advance, autoSpeed, eventIndex, forcesModel, initialState, inspectorModel, logModel, nextPhase, phaseMarks, prevPhase,
   scaleSelection, shipClassId, sourceText, tickLabels, knownSide, perceivedSelection,
 } from '../../src/ui/viewer/model';
 import { getPack } from '../../src/registry';
@@ -15,8 +15,8 @@ describe('viewer model', () => {
 
   it('starts paused at T0 with Auto speed, director camera and 1:4 density', () => {
     const s = initialState(pack, false);
-    expect(s).toMatchObject({ t: 0, playing: false, speed: 'auto', camera: 'director', density: 4, theater: 'range', shipFraming: 'hull', motionOverride: null });
-    expect(s.layers.protection).toBe(false);
+    expect(s).toMatchObject({ t: 0, playing: false, speed: 'auto', camera: 'director', density: 4, theater: 'range', motionOverride: null, systemFocus: 'primary', shipRoll: false, shipPods: true, shipSails: false, fireStartedAt: null });
+    expect(s.layers.protection).toBe(true);
     expect(s.perceived).toEqual({ enabled: false, side: 'alliance' });
   });
 
@@ -43,17 +43,10 @@ describe('viewer model', () => {
     expect(advance({ ...s, camera: 'free' }, 0.1, ix, replay.duration_s, 0.25).t).toBe(500 + autoSpeed(ix, 500) * 0.1);
   });
 
-  it('has genuinely different battle and inspection compositions', () => {
-    expect(composition({ scale: 'system', shipReplay: false })).toEqual({ battle: true, engagement: false, system: true, ship: false, transport: true });
-    expect(composition({ scale: 'engagement', shipReplay: false })).toEqual({ battle: true, engagement: true, system: false, ship: false, transport: true });
-    expect(composition({ scale: 'ship', shipReplay: false })).toEqual({ battle: false, engagement: false, system: false, ship: true, transport: false });
-    expect(composition({ scale: 'ship', shipReplay: true }).transport).toBe(true);
-  });
-
-  it('closes battle context when inspecting without changing framing, time or replay speed', () => {
-    const s = { ...initialState(pack, false), t: 50, speed: 60, shipFraming: 'defenses' as const };
+  it('opens ship detail without changing time or replay speed, and stops a running fire demo', () => {
+    const s = { ...initialState(pack, false), t: 50, speed: 60, fireStartedAt: 1234, shipRoll: true };
     const next = { ...s, ...scaleSelection('ship') };
-    expect(next).toMatchObject({ scale: 'ship', camera: 'free', drawer: 'none', menu: 'none', demo: 'none', t: 50, speed: 60, shipFraming: 'defenses' });
+    expect(next).toMatchObject({ scale: 'ship', camera: 'free', drawer: 'none', menu: 'none', fireStartedAt: null, t: 50, speed: 60, shipRoll: true });
     expect(shipClassId(replay, { selectedShip: 0, selectedClass: null })).toBe(replay.ships[0].classId);
     expect(shipClassId(replay, { selectedShip: 0, selectedClass: 'rhn-ca' })).toBe('rhn-ca');
     expect(shipClassId(replay, { selectedShip: null, selectedClass: null })).toBe((replay.ships.find((ship) => ship.flagship && ship.side === replay.sides[0].id) ?? replay.ships[0]).classId);

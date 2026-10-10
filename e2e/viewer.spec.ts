@@ -1,46 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openBattle, openControls, stubFonts, watchErrors } from './helpers';
+import { openBattle, setState, state, stubFonts, watchErrors } from './helpers';
 
 test.beforeEach(async ({ page }) => stubFonts(page));
-
-test('training replay plays and scrubs to the end without errors (Review Focus 1, 3)', async ({ page }) => {
-  const errors = watchErrors(page);
-  await openBattle(page, 'training');
-  await expect(page.getByRole('tab', { name: 'Engagement' })).toHaveAttribute('aria-selected', 'true');
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
-  const scrub = page.getByRole('slider', { name: 'Battle time' });
-  await scrub.focus();
-  await page.keyboard.press('End');
-  await expect(page.locator('.clock')).toHaveText('T+20:00');
-  await page.keyboard.press('Home');
-  await expect(page.locator('.clock')).toHaveText('T+0:00');
-  // On phones the log is a closed drawer, so check that it has entries rather than that it is on screen.
-  await expect(page.locator('.log-list li').first()).toBeAttached();
-  expect(errors).toEqual([]);
-});
-
-test('Manticore: director view, perceived picture and the ship view (Review Focus 5)', async ({ page }) => {
-  const errors = watchErrors(page);
-  await openBattle(page, 'manticore');
-  await openControls(page);
-  await expect(page.getByRole('button', { name: 'Director' })).toHaveAttribute('aria-pressed', 'true');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.lbl.fleet:visible').first()).toBeVisible();
-  await page.getByRole('button', { name: 'View', exact: true }).click();
-  await page.getByLabel('Perceived').check();
-  await expect(page.locator('.lbl.fleet:visible')).toHaveCount(0);
-  await expect(page.locator('.lbl.contact:visible').first()).toBeVisible();
-  await page.keyboard.press('Escape');
-  await page.getByRole('tab', { name: 'Ship' }).click();
-  await openControls(page);
-  await expect(page.getByRole('button', { name: 'Free' })).toHaveAttribute('aria-pressed', 'true');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.lbl.spec:visible').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Roll demo' }).click();
-  await expect(page.locator('.lbl.demo:visible')).toBeVisible();
-  expect(errors).toEqual([]);
-});
 
 async function settledRenderCount(page: Page): Promise<number> {
   let previous = -1;
@@ -50,124 +11,178 @@ async function settledRenderCount(page: Page): Promise<number> {
     unchanged = current === previous ? unchanged + 1 : 0;
     previous = current;
     return unchanged;
-  }, { intervals: [100, 200, 300], timeout: 10_000 }).toBeGreaterThanOrEqual(2);
+  }, { intervals: [100, 200, 300], timeout: 15_000 }).toBeGreaterThanOrEqual(2);
   return previous;
 }
 
-test('paused renders settle after orbit input, then wake for replay, framing and motion changes', async ({ page }) => {
+test('training replay plays and scrubs to the end without errors', async ({ page }) => {
   const errors = watchErrors(page);
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await openBattle(page, 'training');
-  const initial = await settledRenderCount(page);
-  await page.evaluate(() => window.__honorCic!.store.set({ t: 30, camera: 'free' }));
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.renderCount())).toBeGreaterThan(initial);
-  const beforeInput = await settledRenderCount(page);
-  const plot = (await page.locator('.plot').boundingBox())!;
-  const point = { x: plot.x + plot.width / 2, y: plot.y + plot.height / 3 };
-  await page.mouse.move(point.x, point.y);
-  await page.mouse.down();
-  await page.mouse.move(point.x + 40, point.y + 20, { steps: 5 });
-  await page.mouse.up();
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.renderCount())).toBeGreaterThan(beforeInput);
-  const afterInput = await settledRenderCount(page);
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => window.__honorCic!.renderCount())).toBe(afterInput);
-
-  await page.evaluate(() => window.__honorCic!.store.set({ playing: true, speed: 1 }));
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.store.get().t)).toBeGreaterThan(30);
-  await page.evaluate(() => window.__honorCic!.store.set({ playing: false }));
-  const paused = await settledRenderCount(page);
-  const viewport = page.viewportSize()!;
-  await page.setViewportSize({ width: viewport.width + 16, height: viewport.height });
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.renderCount())).toBeGreaterThan(paused);
-  await settledRenderCount(page);
-
-  await page.evaluate(() => window.__honorCic!.store.set({ camera: 'director' }));
-  const director = await settledRenderCount(page);
-  const directorTime = await page.evaluate(() => {
-    const state = window.__honorCic!.store.get();
-    window.__honorCic!.store.set({ t: state.t + 1 });
-    return state.t + 1;
-  });
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.renderCount())).toBeGreaterThan(director);
-  await settledRenderCount(page);
-  expect(await page.evaluate(() => window.__honorCic!.store.get().t)).toBe(directorTime);
-  expect(await page.evaluate(() => window.__honorCic!.store.get().camera)).toBe('director');
-
-  await page.getByRole('tab', { name: 'Ship' }).click();
-  await page.getByRole('button', { name: 'Roll demo' }).click();
-  const progress = await page.evaluate(() => window.__honorCic!.store.get().demoProgress);
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.store.get().demoProgress)).not.toBe(progress);
-  expect(await page.evaluate(() => window.__honorCic!.store.get().playing)).toBe(false);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  const reduced = await settledRenderCount(page);
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => window.__honorCic!.renderCount())).toBe(reduced);
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await expect.poll(() => page.evaluate(() => window.__honorCic!.renderCount())).toBeGreaterThan(reduced);
-  await page.getByRole('button', { name: 'Roll demo' }).click();
-  await settledRenderCount(page);
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Pause', exact: true }).click();
+  const scrub = page.getByRole('slider', { name: 'Battle time' });
+  await scrub.focus();
+  await page.keyboard.press('End');
+  await expect(page.locator('.clock-t')).toHaveText('T+20:00');
+  await page.keyboard.press('Home');
+  await expect(page.locator('.clock-t')).toHaveText('T+0:00');
+  await expect(page.locator('#log li').first()).toBeAttached();
   expect(errors).toEqual([]);
 });
 
-test('Ship keeps active demo annotations readable inside the measured plot', async ({ page, isMobile }) => {
+test('Manticore opens in the director inside the Site A console', async ({ page, isMobile }) => {
   const errors = watchErrors(page);
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  if (isMobile) await page.setViewportSize({ width: 320, height: page.viewportSize()!.height });
-  await openBattle(page, 'training');
-  await page.getByRole('tab', { name: 'Ship' }).click();
-  for (const [button, kind] of [['Roll demo', 'roll'], ['Pod demo', 'pods'], ['Broadside demo', 'broadside']] as const) {
-    await page.getByRole('button', { name: button }).click();
-    await expect(page.locator('.lbl.demo:visible')).toBeVisible();
-    const label = await page.evaluate(() => {
-      const root = document.querySelector<HTMLElement>('.viewer')!;
-      const style = getComputedStyle(root);
-      const bounds = root.querySelector('.plot')!.getBoundingClientRect();
-      const label = root.querySelector<HTMLElement>('.lbl.demo:not([hidden])')!;
-      const rect = label.getBoundingClientRect();
-      return {
-        text: label.textContent,
-        overflow: label.scrollWidth - label.clientWidth,
-        inside: rect.left >= bounds.left + parseFloat(style.getPropertyValue('--plot-left')) - 1
-          && rect.top >= bounds.top + parseFloat(style.getPropertyValue('--plot-top')) - 1
-          && rect.right <= bounds.right - parseFloat(style.getPropertyValue('--plot-right')) + 1
-          && rect.bottom <= bounds.bottom - parseFloat(style.getPropertyValue('--plot-bottom')) + 1,
-      };
-    });
-    expect(label.inside, kind).toBe(true);
-    expect(label.overflow, kind).toBeLessThanOrEqual(1);
-    expect(label.text, kind).toContain('[S]');
-    await expect(page.locator('.lbl.title:visible').first()).toBeVisible();
-    await expect(page.locator('.lbl.spec:visible').first()).toBeVisible();
-    await page.getByRole('button', { name: button }).click();
+  await openBattle(page, 'manticore');
+  await expect(page.locator('.ident h1')).toHaveText('Battle of Manticore');
+  await expect(page.getByRole('button', { name: 'Director' })).toHaveClass(/\bon\b/);
+  await expect(page.locator('#caption .shot-no')).toContainText('Shot 1.1');
+  await expect(page.locator('.tallies .k').first()).toHaveText(/Missiles in space/i);
+  if (!isMobile) {
+    await expect(page.locator('#forces')).toContainText('Home Fleet');
+    await expect(page.locator('#forces')).toContainText('Inside limit');
   }
+  await setState(page, { t: 120 });
+  await expect(page.locator('#log li').first()).toBeAttached();
+  await page.locator('#log li').first().click({ force: true });
+  expect(await state<number>(page, 't')).toBeLessThan(120);
   expect(errors).toEqual([]);
 });
 
-test('density menu changes the sampling readout (Review Focus 4)', async ({ page }) => {
+test('scale tabs switch between System, Engagement and Ship detail', async ({ page }) => {
+  const errors = watchErrors(page);
+  await openBattle(page, 'manticore');
+  for (const [name, scale] of [['Engagement', 'engagement'], ['Ship detail', 'ship'], ['System', 'system']] as const) {
+    await page.getByRole('tab', { name }).click();
+    await expect(page.getByRole('tab', { name })).toHaveAttribute('aria-selected', 'true');
+    expect(await state(page, 'scale')).toBe(scale);
+    expect(await state(page, 'camera')).toBe('free');
+  }
+  await page.keyboard.press('2');
+  expect(await state(page, 'scale')).toBe('engagement');
+  expect(errors).toEqual([]);
+});
+
+test('system presets frame the binary, the companion and the outer orbits', async ({ page }) => {
+  const errors = watchErrors(page);
+  await openBattle(page, 'manticore');
+  await page.getByRole('tab', { name: 'System' }).click();
+  const before = await settledRenderCount(page);
+  for (const [name, focus] of [['Binary & junction', 'binary'], ['Manticore-B', 'secondary'], ['Outer orbits', 'outer'], ['Manticore-A', 'primary']] as const) {
+    await page.getByRole('button', { name, exact: true }).click();
+    await expect(page.getByRole('button', { name, exact: true })).toHaveClass(/\bactive\b/);
+    expect(await state(page, 'systemFocus')).toBe(focus);
+  }
+  expect(await settledRenderCount(page)).toBeGreaterThan(before);
+  expect(errors).toEqual([]);
+});
+
+test('ship detail context tools drive the wedge demos', async ({ page }) => {
+  const errors = watchErrors(page);
+  await openBattle(page, 'manticore');
+  await page.getByRole('tab', { name: 'Ship detail' }).click();
+  await expect(page.locator('.object-panel')).toBeVisible();
+  await expect(page.locator('.object-panel .obj-title')).toContainText('Invictus');
+  await page.getByRole('button', { name: 'Belly-up roll' }).click();
+  await expect(page.getByRole('button', { name: 'Belly-up roll' })).toHaveClass(/\bactive\b/);
+  expect(await state(page, 'shipRoll')).toBe(true);
+  await page.getByRole('button', { name: 'Transit sails' }).click();
+  expect(await state(page, 'shipSails')).toBe(true);
+  await page.getByRole('button', { name: 'Fire / defense demo' }).click();
+  expect(await state(page, 'shipSails')).toBe(false);
+  expect(await state(page, 'fireStartedAt')).not.toBeNull();
+  await expect(page.locator('#readout')).not.toBeEmpty();
+  const classes = page.getByRole('combobox', { name: 'Ship class' });
+  const option = await classes.locator('option').nth(2).getAttribute('value');
+  await classes.selectOption(option!);
+  expect(await state(page, 'selectedClass')).toBe(option);
+  expect(errors).toEqual([]);
+});
+
+test('menus: shots jump the director, layers change the picture and density, key opens notes', async ({ page }) => {
+  const errors = watchErrors(page);
+  await openBattle(page, 'manticore');
+  await page.getByRole('button', { name: 'Shots', exact: true }).click();
+  await expect(page.locator('#menu-shots')).toBeVisible();
+  const items = page.locator('#menu-shots .mi');
+  expect(await items.count()).toBeGreaterThan(5);
+  await items.nth(3).click();
+  await expect(page.locator('#menu-shots')).toBeHidden();
+  expect(await state(page, 'camera')).toBe('director');
+  expect(await state<number>(page, 't')).toBeGreaterThan(0);
+
+  await page.getByRole('tab', { name: 'Engagement' }).click();
+  await setState(page, { menu: 'layers' });
+  await expect(page.locator('#menu-layers')).toBeVisible();
+  await page.locator('#menu-layers .seg button', { hasText: '1 : 16' }).click();
+  expect(await state(page, 'density')).toBe(16);
+  await page.locator('#menu-layers .seg button', { hasText: 'Perceived' }).click();
+  expect(await state<{ enabled: boolean }>(page, 'perceived')).toMatchObject({ enabled: true });
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#menu-layers')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Key', exact: true }).click();
+  await expect(page.locator('#menu-key')).toContainText('Resonance zone');
+  await page.getByRole('button', { name: 'Notes and sources' }).click();
+  await expect(page.getByRole('dialog', { name: 'Notes and sources' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
+test('paused rendering settles, then wakes for replay time and orbit input', async ({ page }) => {
+  const errors = watchErrors(page);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await openBattle(page, 'training');
-  await page.evaluate(() => window.__honorCic!.store.set({ t: 30 }));
-  await expect(page.locator('.transport .readout').filter({ hasText: 'Sampling 1:4' })).toBeVisible();
-  if (!await page.getByRole('button', { name: 'Density', exact: true }).isVisible()) await openControls(page);
-  await page.getByRole('button', { name: 'Density' }).click();
-  await page.getByLabel('1:1', { exact: true }).check();
-  await expect(page.locator('.transport .readout').filter({ hasText: 'Sampling 1:1' })).toBeVisible();
+  await setState(page, { camera: 'free' });
+  const idle = await settledRenderCount(page);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.__honorCic!.renderCount())).toBe(idle);
+  await setState(page, { t: 300 });
+  const afterScrub = await settledRenderCount(page);
+  expect(afterScrub).toBeGreaterThan(idle);
+  const box = (await page.locator('.plot').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2 + 30, { steps: 6 });
+  await page.mouse.up();
+  expect(await settledRenderCount(page)).toBeGreaterThan(afterScrub);
+  expect(errors).toEqual([]);
 });
 
 test('honours prefers-reduced-motion', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openBattle(page, 'training');
-  await page.getByRole('button', { name: 'View', exact: true }).click();
-  await expect(page.getByLabel('Reduce motion')).toBeChecked();
+  expect(await state(page, 'reducedMotion')).toBe(true);
 });
 
-test('phone layout: bottom bar, sheets and no sideways scroll', async ({ page, isMobile }) => {
+test('phone: Forces and the log open as sheets and nothing scrolls sideways', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'phone project only');
-  await openBattle(page, 'training');
-  const bar = page.getByRole('navigation', { name: 'Panels' });
-  await expect(bar).toBeVisible();
+  const errors = watchErrors(page);
+  await openBattle(page, 'manticore');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
-  await bar.getByRole('button', { name: 'Log' }).click();
-  await expect(page.locator('#right')).toBeVisible();
+  await page.locator('#hudToggles').getByRole('button', { name: 'Forces' }).click();
+  await expect(page.locator('#forces')).toBeVisible();
+  await page.locator('#hudToggles').getByRole('button', { name: 'Log' }).click();
+  await expect(page.locator('#side')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('WebGL unavailable keeps the console usable', async ({ page, isMobile }) => {
+  const errors = watchErrors(page);
+  await page.addInitScript(() => {
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, options?: unknown) {
+      if (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl') return null;
+      return getContext.call(this, kind, options);
+    } as HTMLCanvasElement['getContext'];
+  });
+  await openBattle(page, 'training');
+  await expect(page.locator('.notice')).toContainText('This viewer needs WebGL');
+  await expect(page.locator('.plot')).toBeHidden();
+  if (isMobile) await page.locator('#hudToggles').getByRole('button', { name: 'Forces' }).click();
+  await expect(page.locator('#forces')).toContainText('Training squadron Red');
+  await page.getByRole('link', { name: 'Catalog' }).click();
+  await expect(page.locator('.catalog')).toBeVisible();
+  expect(errors).toEqual([]);
 });
