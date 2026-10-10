@@ -250,3 +250,65 @@ describe('EngagementView', () => {
     expect(v.status().scaleNote).toContain('Packet/LAC spread');
   });
 });
+
+describe('EngagementView in 3D: formations and launches (Manticore)', () => {
+  const pack = getPack('manticore')!;
+  const replay = solve(pack, TECH);
+  const ctx = (r: typeof replay, t: number): ViewContext => ({
+    replay: r, pack, tech: TECH, frame: sampleFrame(r, t, createFrame(r)),
+    layers: { ...(Object.fromEntries(LAYERS.map((l) => [l, true])) as ViewContext['layers']), commander: false, protection: false },
+    perceived: { enabled: false, side: 'alliance' }, density: 1, theater: 'sphinx', focusSide: 'alliance', systemFocus: 'primary',
+    ship: { roll: false, pods: true, sails: false, fireT: null }, selectedShip: null, selectedClass: null, reducedMotion: false,
+  });
+  const unit = (id: string) => replay.units.findIndex((u) => u.id === id);
+  const centreOf = (c: ViewContext, i: number): [number, number, number] => [c.frame.unitPos[i * 3], c.frame.unitPos[i * 3 + 1], c.frame.unitPos[i * 3 + 2]];
+  const orbitPose = (v: EngagementView, centre: [number, number, number], azDeg: number, elDeg: number, km: number) => {
+    const az = (azDeg * Math.PI) / 180, el = (elDeg * Math.PI) / 180;
+    v.setPose([centre[0] + km * Math.cos(el) * Math.cos(az), centre[1] + km * Math.cos(el) * Math.sin(az), centre[2] + km * Math.sin(el)], centre);
+  };
+
+  it('keeps each fleet\'s formation in 3D while the camera orbits it, instead of turning a flat grid to face the camera', () => {
+    const v = new EngagementView(pack, replay, null);
+    const c = ctx(replay, 0);
+    const hf = centreOf(c, unit('home-fleet'));
+    const shipsAt = (az: number, el: number) => {
+      orbitPose(v, hf, az, el, 20e6);
+      v.update(c);
+      return Array.from(v.debugPositions().subarray(0, v.drawCounts().ships * 3));
+    };
+    const reference = shipsAt(-30, 25);
+    expect(reference.length).toBeGreaterThan(300);
+    for (const [az, el] of [[0, 25], [60, 10], [150, 45], [210, -20], [300, 70], [-30, 0]]) {
+      const moved = shipsAt(az, el);
+      expect(moved).toHaveLength(reference.length);
+      const worst = moved.reduce((m, x, i) => Math.max(m, Math.abs(x - reference[i])), 0);
+      expect(worst).toBeLessThan(1);
+    }
+  });
+
+  it('fires each missile from a ship of the launching fleet and brings it down on a ship of the target fleet', () => {
+    const hfIdx = unit('home-fleet'), sfIdx = unit('second-fleet');
+    const packet = replay.packets.find((p) => p.fromUnit === hfIdx && p.toUnit === sfIdx && p.tLaunch > 0)!;
+    const local = { ...replay, packets: [{ ...packet, idx: 0 }] };
+    const v = new EngagementView(pack, local, null);
+    const headsNearShips = (t: number, fleet: number, toleranceKm: number) => {
+      const c = ctx(local, t);
+      orbitPose(v, centreOf(c, fleet), 210, 25, 20e6);
+      v.update(c);
+      const glyphs = local.units[fleet].shipIdx.flatMap((s) => v.shipOnPlot(s) ?? []);
+      expect(glyphs.length).toBeGreaterThan(100);
+      const heads = v.debugPositions().subarray(v.drawCounts().ships * 3);
+      expect(heads.length / 3).toBeGreaterThan(30);
+      let far = 0;
+      for (let h = 0; h < heads.length; h += 3) {
+        const d = Math.min(...glyphs.map((g) => Math.hypot(g.x - heads[h], g.y - heads[h + 1], g.z - heads[h + 2])));
+        if (d > toleranceKm) far++;
+      }
+      return far / (heads.length / 3);
+    };
+    // Glyphs are a few hundred thousand km apart at 20 Mkm, so these tolerances single out the glyphs themselves. Missiles
+    // close at up to 0.8 c, so the landing is checked 0.02 s out (about 5,000 km), inside the terminal scatter.
+    expect(headsNearShips(packet.tLaunch + 1, hfIdx, 3_000)).toBe(0);
+    expect(headsNearShips(packet.tArrive - 0.02, sfIdx, 25_000)).toBe(0);
+  });
+});

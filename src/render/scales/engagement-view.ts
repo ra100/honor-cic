@@ -3,11 +3,13 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { baseValue } from '../../core/evidence';
 import { commanderPicture, replayTrackables, type CommanderPicture } from '../../core/perceived';
 import {
-  DrivePhase, packetAliveAt, packetPositionAt, ShipStatus, STATUS_TEXT, subsystemsAt, unitVelocity, type BeamEvent, type Replay,
+  DrivePhase, packetAliveAt, packetPositionAt, ShipStatus, shipStatusAt, STATUS_TEXT, subsystemsAt, unitPosition, unitPresent, unitVelocity,
+  type BeamEvent, type Replay,
 } from '../../core/replay';
-import { hashSeed } from '../../core/rng';
+import { hashSeed, mulberry32 } from '../../core/rng';
 import type { ScenarioPack } from '../../core/schema';
 import type { Trackable } from '../../core/sensors';
+import { toSystem } from '../../core/solver/formation';
 import { orientationAt } from '../../core/solver/geometry';
 import { bodyPosition, exclusionsAt, indexBodies } from '../../core/solver/orbits';
 import { fmtCount, fmtDistance, fmtDuration, kmToLm } from '../../core/units';
@@ -22,7 +24,7 @@ import { StreakLayer } from '../engagement/streaks';
 import {
   boundariesOf, boundaryCrossings, BOUNDARY_REACH, limitAnchor, sphereGap, TacticalPlane, zoneFlankCrossings, zoneNear,
 } from '../engagement/tactical-plane';
-import { fleetDisplayFormation, type FormationGlyph } from '../formations';
+import { formationSpread, GLYPH_GAP_PX, slotRadiusKm, slotSpacingKm } from '../formations';
 import { applyPlotInsets, plotDistanceScale, plotSize, safePlotRect, type PlotRect } from '../framing';
 import { shipGlyph } from '../glyphs';
 import { projectedBounds, type LabelSpec } from '../labels';
@@ -31,6 +33,7 @@ import { FloatingOrigin } from '../origin';
 import { hexToNum, PALETTE, rgbOf, STATUS_BRIGHTNESS } from '../palette';
 import { PointCloud, SHAPE } from '../points';
 import { beamTheatersFor, LAUNCH_CUE_S, streakTailT } from '../salvos';
+import type { TechRegistry } from '../../core/tech';
 import type { ScaleView, ViewContext, ViewStatus } from './types';
 
 const ROLE_SHAPE = { wall: SHAPE.wall, screen: SHAPE.screen, carrier: SHAPE.carrier, lac: SHAPE.lac } as const;
@@ -38,6 +41,12 @@ const RECENTER_KM = 50_000;
 /** Coming back to the Engagement tab this far from the last time it showed re-frames the free camera. */
 const REFRAME_AFTER_S = 120;
 const LAC_DOTS_PER_GROUP = 4_000;
+/** Swarm points of a LAC group that launch and receive missiles: the first of its drawn dots. */
+const LAC_ANCHORS = 64;
+/** Share of a packet's missiles that home on the ship the solver aimed it at; the rest spread over the target fleet. */
+const AIMED_SHARE = 0.4;
+/** A salvo converges from its launchers, and fans out over its targets, across this many drawn formation radii. */
+const FUNNEL_RADII = 1.5;
 const WEDGE_CAP = 300;
 const LINKS_PER_MOTHER = 24;
 const LINK_CAP = 2_048;
@@ -83,6 +92,9 @@ export interface DrawCounts {
   fleetRings: number;
   bodies: number;
 }
+
+/** Packs give LAC counts, not slots, so a group's swarm radius is a display aid [S], km. */
+const lacSpreadKm = (n: number): number => Math.min(30_000, 2_000 * Math.sqrt(Math.max(0, n) / 100));
 
 export const ageText = (s: number): string => (s < 60 ? `${s.toFixed(1)} s old` : `${fmtDuration(s)} old`);
 
@@ -151,6 +163,29 @@ export class EngagementView implements ScaleView {
   private readonly alive: Uint32Array;
   /** Each packet's drawn head-cloud radius this frame, render units. */
   private readonly headSpread: Float64Array;
+  /** Each packet's solved launch point from its launching unit's centre, and its aim point from the target unit's, km. */
+  private readonly launchOffKm: Float64Array;
+  private readonly aimOffKm: Float64Array;
+  /** Per packet, the launch-table glyphs its missiles leave from and come down on (StreakLayer anchors); set by prepare. */
+  private launchAnchors: Uint32Array[] = [];
+  private targetAnchors: Uint32Array[] = [];
+  private readonly aimAnchor: Int32Array;
+  private prepared = false;
+  /** Ships each salvo is fired from, for the launch cues. */
+  private readonly salvoLaunchers = new Map<string, number[]>();
+  /** First launch-table index of each LAC group's swarm points. */
+  private readonly lacAnchorBase = new Map<number, number>();
+  /** Per unit: its formation's own spacing and radius (km) and the clear spacing its glyphs need (CSS px). */
+  private readonly slotSpacing: Float64Array;
+  private readonly slotRadius: Float64Array;
+  private readonly gapPx: Float64Array;
+  /** Per unit, how many times larger than life its formation is drawn this frame. */
+  private readonly spread: Float64Array;
+  /** Where every ship of the theater is drawn this frame (render units), and whether it has a place. */
+  private readonly display: Float64Array;
+  private readonly placed: Uint8Array;
+  /** Each packet's pull onto its launchers' glyphs [0] and its targets' [1] at the head this frame. */
+  private readonly headPull: Float64Array;
   private readonly bodies;
   private readonly v = new THREE.Vector3();
   private readonly w = new THREE.Vector3();
@@ -189,7 +224,13 @@ export class EngagementView implements ScaleView {
     this.markLines = new LineBatch(Math.max(64, replay.units.length * (MARK_SEGMENTS + 4)), true, 1);
     this.markLines.lines.renderOrder = 2;
     this.wedgeLines.lines.renderOrder = 7;
-    this.streaks = new StreakLayer(replay.packets.length, DOT_CAP);
+    let anchors = 1 + replay.ships.length;
+    replay.units.forEach((u, i) => {
+      if (u.kind !== 'lac') return;
+      this.lacAnchorBase.set(i, anchors);
+      anchors += LAC_ANCHORS;
+    });
+    this.streaks = new StreakLayer(replay.packets.length, DOT_CAP, anchors);
     this.beams = [...replay.beams].sort((a, b) => a.t - b.t);
     this.maxBeamDur = this.beams.reduce((m, b) => Math.max(m, b.dur), 0);
     const theaters = beamTheatersFor(replay);
@@ -212,6 +253,30 @@ export class EngagementView implements ScaleView {
     });
     this.alive = new Uint32Array(replay.packets.length);
     this.headSpread = new Float64Array(replay.packets.length);
+    this.slotSpacing = new Float64Array(replay.units.length);
+    this.slotRadius = new Float64Array(replay.units.length);
+    this.gapPx = new Float64Array(replay.units.length);
+    this.spread = new Float64Array(replay.units.length).fill(1);
+    replay.units.forEach((u, i) => {
+      const slots = u.shipIdx.map((s) => replay.ships[s].slot);
+      this.slotSpacing[i] = slotSpacingKm(slots);
+      this.slotRadius[i] = slotRadiusKm(slots);
+    });
+    this.display = new Float64Array(replay.ships.length * 3);
+    this.placed = new Uint8Array(replay.ships.length);
+    this.headPull = new Float64Array(replay.packets.length * 2);
+    this.launchOffKm = new Float64Array(replay.packets.length * 3);
+    this.aimOffKm = new Float64Array(replay.packets.length * 3);
+    this.aimAnchor = new Int32Array(replay.packets.length).fill(-1);
+    replay.packets.forEach((p, i) => {
+      const from = unitPosition(replay.units[p.fromUnit], p.tLaunch);
+      const to = unitPosition(replay.units[p.toUnit], p.tArrive);
+      const end = packetPositionAt(p, p.tArrive);
+      for (let c = 0; c < 3; c++) {
+        this.launchOffKm[i * 3 + c] = this.launchKm[i * 3 + c] - from[c];
+        this.aimOffKm[i * 3 + c] = end[c] - to[c];
+      }
+    });
     this.bodies = indexBodies(pack.bodies);
     this.bodyLayer = new BodyLayer(this.bodies);
     this.scene.add(
@@ -231,7 +296,65 @@ export class EngagementView implements ScaleView {
     this.parked = true;
   }
 
+  /** Class-dependent tables, built once from the first context's registry: glyph spacing and who launches and receives. */
+  private prepare(tech: TechRegistry): void {
+    if (this.prepared) return;
+    this.prepared = true;
+    const { replay } = this;
+    replay.units.forEach((u, i) => {
+      this.gapPx[i] = Math.max(0, ...u.shipIdx.map((s) => shipGlyph(tech.classes[replay.ships[s].classId], replay.ships[s].role).size)) + GLYPH_GAP_PX;
+    });
+    const launchers = new Map<string, Uint32Array>();
+    const targets = new Map<string, Uint32Array>();
+    this.launchAnchors = replay.packets.map((p) => {
+      const kind = this.launchKinds.get(p.planId) ?? 'tube';
+      const key = `${p.fromUnit}|${kind}|${p.tLaunch}`;
+      let list = launchers.get(key);
+      if (!list) {
+        list = this.anchorsOf(tech, p.fromUnit, p.tLaunch, kind);
+        launchers.set(key, list);
+      }
+      if (!this.salvoLaunchers.has(p.salvoId)) {
+        this.salvoLaunchers.set(p.salvoId, Array.from(list, (a) => a - 1).filter((s) => s >= 0 && s < replay.ships.length));
+      }
+      return list;
+    });
+    this.targetAnchors = replay.packets.map((p, i) => {
+      const key = `${p.toUnit}|${p.tLaunch}`;
+      let list = targets.get(key);
+      if (!list) {
+        list = this.anchorsOf(tech, p.toUnit, p.tLaunch, null);
+        targets.set(key, list);
+      }
+      const aim = p.targetShip >= 0 ? 1 + p.targetShip : -1;
+      this.aimAnchor[i] = list.includes(aim) ? aim : -1;
+      return list;
+    });
+  }
+
+  /**
+   * Launch-table glyphs of a unit at time t: its ships still fighting (for a launch, the ones that carry that kind of
+   * missile: tubes, pods, or the wall ships towing pod strings), else its LAC group's swarm points.
+   */
+  private anchorsOf(tech: TechRegistry, unit: number, t: number, kind: 'tube' | 'pod' | 'tow' | null): Uint32Array {
+    const { replay } = this;
+    const lac = this.lacAnchorBase.get(unit);
+    if (lac !== undefined) return Uint32Array.from({ length: LAC_ANCHORS }, (_, k) => lac + k);
+    const fighting = replay.units[unit].shipIdx.filter((s) => UNDER_WAY.has(shipStatusAt(replay, replay.ships[s], t)));
+    const carries = (s: number): boolean => {
+      const cls = tech.classes[replay.ships[s].classId];
+      if (!cls) return false;
+      if (kind === 'pod') return (baseValue(cls.pod_capacity) ?? 0) > 0;
+      if (kind === 'tow') return replay.ships[s].role === 'wall';
+      return ((baseValue(cls.broadside.missile) ?? 0) + (baseValue(cls.fore.missile) ?? 0) + (baseValue(cls.aft.missile) ?? 0)) > 0;
+    };
+    const armed = kind === null ? fighting : fighting.filter(carries);
+    const ships = armed.length ? armed : fighting.length ? fighting : replay.units[unit].shipIdx;
+    return Uint32Array.from(ships, (s) => 1 + s);
+  }
+
   update(ctx: ViewContext): void {
+    this.prepare(ctx.tech);
     const { width, height } = plotSize(this.dom, this.camera.aspect);
     applyPlotInsets(this.camera, width, height, ctx.plotInsets);
     const scale = plotDistanceScale(this.camera, width, height, ctx.plotInsets);
@@ -436,76 +559,77 @@ export class EngagementView implements ScaleView {
     return parts.join(' · ');
   }
 
+  /** Kilometres per CSS pixel at the camera's look distance: the zoom, whatever the view direction. */
+  private kmPerPxAtLook(height: number): number {
+    const lookKm = this.camera.position.distanceTo(this.controls?.target ?? new THREE.Vector3()) * this.origin.kmPerUnit;
+    return (2 * lookKm * Math.tan((this.camera.fov * Math.PI) / 360)) / (Math.max(1, height) * this.camera.zoom);
+  }
+
+  /**
+   * Where every ship of the theater is drawn: its true place in its fleet's 3D formation, the formation spread about the
+   * fleet's centre by formationSpread so neighbouring glyphs stay apart [S]. The spread follows zoom and positions only,
+   * so orbiting turns the formation rather than reshaping it; a ship off its slot (a drifting hulk) keeps its offset.
+   */
+  private placeFormations(ctx: ViewContext, height: number): void {
+    const { replay, frame } = ctx;
+    this.placed.fill(0);
+    this.spread.fill(1);
+    const kmPerPx = this.kmPerPxAtLook(height);
+    // A fleet wiped out keeps its wrecks where they were drawn; only fleets still fighting keep others at a distance.
+    const fleets = replay.units.flatMap((u, i) => (u.kind === 'fleet' && u.theater === ctx.theater && unitPresent(u, frame.t) ? [i] : []));
+    const fighting = fleets.filter((i) => frame.unitCount[i] > 0);
+    const at = (i: number): Vec3 => [frame.unitPos[i * 3], frame.unitPos[i * 3 + 1], frame.unitPos[i * 3 + 2]];
+    for (const i of fleets) {
+      const u = replay.units[i];
+      const centre = at(i);
+      let neighbourKm = Infinity;
+      for (const j of fighting) {
+        if (j === i) continue;
+        const other = at(j);
+        neighbourKm = Math.min(neighbourKm, Math.hypot(other[0] - centre[0], other[1] - centre[1], other[2] - centre[2]));
+      }
+      const spread = formationSpread({ kmPerPx, spacingKm: this.slotSpacing[i], radiusKm: this.slotRadius[i], minGapPx: this.gapPx[i], neighbourKm });
+      this.spread[i] = spread;
+      const basis = orientationAt(u.facing, u.up, u.rolls, frame.t);
+      const k = (spread - 1) / this.origin.kmPerUnit;
+      for (const s of u.shipIdx) {
+        const slot = toSystem(basis, replay.ships[s].slot);
+        this.origin.point(frame.shipPos.subarray(s * 3, s * 3 + 3), this.v);
+        this.display[s * 3] = this.v.x + slot[0] * k;
+        this.display[s * 3 + 1] = this.v.y + slot[1] * k;
+        this.display[s * 3 + 2] = this.v.z + slot[2] * k;
+        this.placed[s] = 1;
+      }
+    }
+  }
+
   private drawShips(ctx: ViewContext, on: boolean, labels: LabelSpec[]): void {
     const { replay, frame } = ctx;
     this.shipCloud.begin();
     this.shipsInView = [];
     this.fleets = new Map();
     this.shown.clear();
+    this.placed.fill(0);
     if (on) {
       const { width, height } = plotSize(this.dom, this.camera.aspect);
       const safe = safePlotRect(width, height, ctx.plotInsets);
-      const formations = new Map<number, FormationGlyph[]>();
-      const positions = new Map<number, THREE.Vector3>();
+      this.placeFormations(ctx, height);
+      // Each fleet's drawn glyphs, which its label and ring frame; a wreck stays part of it until its blast has faded.
       const bounds = new Map<number, THREE.Vector3[]>();
-      const schematic = new Set<number>();
-      replay.ships.forEach((s, i) => {
-        const status = frame.shipStatus[i] as ShipStatus;
-        if (replay.units[s.unit].theater !== ctx.theater || STATUS_BRIGHTNESS[status] === 0) return;
-        // A ship blows up in the slot it was drawn in; its wreck leaves the display formation once the blast has faded.
-        if (status === ShipStatus.Destroyed && !(frame.t - (this.deathT.get(i) ?? -Infinity) < SHOCK_S)) return;
-        const group = formations.get(s.unit) ?? [];
-        group.push({
-          ship: i, role: s.role, classId: s.classId, flagship: s.flagship,
-          size: shipGlyph(ctx.tech.classes[s.classId], s.role, ctx.selectedShip === i).size,
-          pos: this.origin.point(frame.shipPos.subarray(i * 3, i * 3 + 3), new THREE.Vector3()),
-        });
-        formations.set(s.unit, group);
-      });
-      const centres = new Map([...formations.keys()].map((unit) => [
-        unit, this.origin.point(frame.unitPos.subarray(unit * 3, unit * 3 + 3), new THREE.Vector3()),
-      ]));
-      const projected = new Map([...centres].map(([unit, centre]) => [unit, centre.clone().project(this.camera)]));
-      const kmPerPx = (p: THREE.Vector3): number => {
-        const depth = Math.abs(p.clone().applyMatrix4(this.camera.matrixWorldInverse).z);
-        return (2 * depth * Math.tan((this.camera.fov * Math.PI) / 360)) / (height * this.camera.zoom);
-      };
-      for (const [unit, glyphs] of formations) {
-        const centre = projected.get(unit)!;
-        const footprint = { halfWidth: Infinity, halfHeight: Infinity };
-        for (const [other, pos] of projected) {
-          if (other !== unit && pos.z >= -1 && pos.z <= 1) {
-            const dx = Math.abs(centre.x - pos.x) * width / 2;
-            const dy = Math.abs(centre.y - pos.y) * height / 2;
-            if (dx >= dy) footprint.halfWidth = Math.min(footprint.halfWidth, dx / 2);
-            else footprint.halfHeight = Math.min(footprint.halfHeight, dy / 2);
-          }
-        }
-        const world = centres.get(unit)!;
-        const display = fleetDisplayFormation(glyphs, world, this.camera, width, height, safe, replay.units[unit].id, undefined, footprint);
-        glyphs.forEach((g, i) => positions.set(g.ship, display.positions[i]));
-        if (display.schematic) schematic.add(unit);
-        bounds.set(unit, display.schematic ? display.bounds : display.positions);
-        let physical = 0;
-        let live = 0;
-        for (const g of glyphs) {
-          if (!UNDER_WAY.has(frame.shipStatus[g.ship] as ShipStatus)) continue;
-          live++;
-          physical = Math.max(physical, g.pos.distanceTo(world));
-        }
-        // The ring frames what is drawn: the spread display formation when crowded, else the ships under way.
-        this.fleets.set(unit, {
-          centre: world.clone(), radius: display.schematic ? display.radiusPx * kmPerPx(world) : physical,
-          rect: projectedBounds(display.positions, this.camera, width, height, 8), live: live > 0,
-        });
-      }
       replay.ships.forEach((s, i) => {
         if (replay.units[s.unit].theater !== ctx.theater) return;
         const st = frame.shipStatus[i] as ShipStatus;
         const k = STATUS_BRIGHTNESS[st];
         if (k === 0) return;
-        const p = positions.get(i) ?? this.origin.point(frame.shipPos.subarray(i * 3, i * 3 + 3), this.v);
-        this.shown.set(i, p.clone());
+        const p = this.placed[i]
+          ? new THREE.Vector3(this.display[i * 3], this.display[i * 3 + 1], this.display[i * 3 + 2])
+          : this.origin.point(frame.shipPos.subarray(i * 3, i * 3 + 3), new THREE.Vector3());
+        this.shown.set(i, p);
+        if (st !== ShipStatus.Destroyed || frame.t - (this.deathT.get(i) ?? -Infinity) < SHOCK_S) {
+          const group = bounds.get(s.unit) ?? [];
+          group.push(p);
+          bounds.set(s.unit, group);
+        }
         const selected = ctx.selectedShip === i;
         const killed = st === ShipStatus.Destroyed || st === ShipStatus.MissionKill;
         const glyph = shipGlyph(ctx.tech.classes[s.classId], s.role, selected, ctx.layers.damage && killed);
@@ -515,11 +639,25 @@ export class EngagementView implements ScaleView {
         const ally = s.side === ctx.focusSide;
         if (selected) {
           const cls = ctx.tech.classes[s.classId]?.name ?? s.classId;
-          labels.push({ key: `ship:${i}`, cls: 'ship selected', text: s.name, sub: `${cls}, ${STATUS_TEXT[st]}`, pos: p.clone(), avoid: schematic.has(s.unit) ? bounds.get(s.unit) : undefined });
-        } else if (s.flagship && !schematic.has(s.unit) && WALL_UP.has(st) && this.camera.position.distanceTo(p) * this.origin.kmPerUnit < FLAG_LABEL_KM) {
+          labels.push({ key: `ship:${i}`, cls: 'ship selected', text: s.name, sub: `${cls}, ${STATUS_TEXT[st]}`, pos: p.clone() });
+        } else if (s.flagship && WALL_UP.has(st) && this.camera.position.distanceTo(p) * this.origin.kmPerUnit < FLAG_LABEL_KM) {
           labels.push({ key: `ship:${i}`, cls: `ship ${ally ? 'allied' : 'hostile'}`, text: `${s.name} ★`, pos: p.clone() });
         }
       });
+      for (const [unit, glyphs] of bounds) {
+        const centre = this.origin.point(frame.unitPos.subarray(unit * 3, unit * 3 + 3), new THREE.Vector3());
+        let radius = 0;
+        let live = 0;
+        for (const s of replay.units[unit].shipIdx) {
+          if (!UNDER_WAY.has(frame.shipStatus[s] as ShipStatus)) continue;
+          const p = this.shown.get(s);
+          if (!p) continue;
+          live++;
+          radius = Math.max(radius, p.distanceTo(centre));
+        }
+        // The ring frames the ships still under way with the fleet, as drawn.
+        this.fleets.set(unit, { centre, radius, rect: projectedBounds(glyphs, this.camera, width, height, 8), live: live > 0 });
+      }
       this.placeFleetLabels(ctx, labels, bounds, width, height, safe);
     }
     this.shipCloud.commit();
@@ -606,7 +744,7 @@ export class EngagementView implements ScaleView {
     const u = ctx.replay.units[i];
     if (u.kind !== 'lac') return null;
     const n = ctx.frame.unitCount[i];
-    const spread = Math.min(30_000, 2_000 * Math.sqrt(n / 100)) / this.origin.kmPerUnit;
+    const spread = lacSpreadKm(n) / this.origin.kmPerUnit;
     const c = this.origin.point(ctx.frame.unitPos.subarray(i * 3, i * 3 + 3));
     const right = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 0).multiplyScalar(spread);
     const up = new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld, 1).multiplyScalar(spread);
@@ -820,8 +958,7 @@ export class EngagementView implements ScaleView {
         if (u.kind !== 'lac' || u.theater !== ctx.theater || n === 0) return;
         const dots = Math.min(LAC_DOTS_PER_GROUP, Math.ceil(n / Math.max(1, ctx.density)));
         const off = this.cache.offsets(hashSeed('lac', u.id), dots);
-        // Packs give LAC counts, not slots, so the swarm spread is a display aid (S).
-        const spread = Math.min(30_000, 2_000 * Math.sqrt(n / 100));
+        const spread = lacSpreadKm(n);
         const c = this.origin.point(frame.unitPos.subarray(i * 3, i * 3 + 3), this.v);
         const rgb = rgbOf(this.sideRgb.get(u.side) ?? PALETTE.ink, 0.85);
         for (let k = 0; k < dots; k++) {
@@ -847,8 +984,9 @@ export class EngagementView implements ScaleView {
     this.streaks.plan(
       plan.perPacket, plan.effectiveRatio,
       (i) => sampledCount(replay.packets[i].launched.attack + replay.packets[i].launched.ew, plan.effectiveRatio),
-      (i) => replay.packets[i].seed, (i, n) => this.cache.offsets(replay.packets[i].seed, n),
+      (i) => replay.packets[i].seed, (i, n) => this.cache.offsets(replay.packets[i].seed, n), (i, n) => this.missileAnchors(i, n),
     );
+    this.writeAnchors(ctx, on);
     const { width, height } = this.dims();
     const viewKm = this.camera.position.distanceTo(this.controls?.target ?? new THREE.Vector3()) * this.origin.kmPerUnit;
     const kmPerPx = (depthKm: number) => (2 * depthKm * Math.tan((this.camera.fov * Math.PI) / 360)) / (height * this.camera.zoom);
@@ -869,6 +1007,8 @@ export class EngagementView implements ScaleView {
     const maxTrailKm = Math.min(TRAIL_VIEW_SHARE * viewKm, trailPx * kmPerPx(viewKm));
     const head = new THREE.Vector3();
     const tail = new THREE.Vector3();
+    const launchOff = new THREE.Vector3();
+    const aimOff = new THREE.Vector3();
     const tailKm: Vec3 = [0, 0, 0];
     for (let i = 0; i < replay.packets.length; i++) {
       const n = plan.perPacket[i];
@@ -885,28 +1025,29 @@ export class EngagementView implements ScaleView {
       packetPositionAt(p, tTail, tailKm);
       this.origin.point(tailKm, tail);
       const start = this.launchKm.subarray(i * 3, i * 3 + 3);
-      const covered = (q: ArrayLike<number>) => Math.min(1, Math.hypot(q[0] - start[0], q[1] - start[1], q[2] - start[2]) / Math.max(1, this.flightKm[i]));
-      // A salvo funnels out of the launcher's drawn formation within one formation radius, flies as Site A's compact
-      // scattered cloud, and opens over the target's drawn formation on the last stretch. Display aid [S]: the packet
-      // centre stays on its solved path.
-      const fromKm = (this.fleets.get(p.fromUnit)?.radius ?? 0) * this.origin.kmPerUnit;
-      const toKm = (this.fleets.get(p.toUnit)?.radius ?? 0) * this.origin.kmPerUnit;
       const flight = Math.max(1, this.flightKm[i]);
-      const fromEdge = Math.min(0.45, Math.max(0.02, fromKm / flight));
-      const toEdge = Math.min(0.45, Math.max(0.02, toKm / flight));
-      const spread = (q: ArrayLike<number>, age: number) => {
-        const f = covered(q);
-        const formation = 0.5 * (fromKm * (1 - smoothstep(0, fromEdge, f)) + toKm * smoothstep(1 - toEdge, 1, f));
-        return Math.max(packetSpreadKm(age), salvoSpreadKm(this.flightKm[i], f), formation) / this.origin.kmPerUnit;
-      };
+      const covered = (q: ArrayLike<number>) => Math.min(1, Math.hypot(q[0] - start[0], q[1] - start[1], q[2] - start[2]) / flight);
+      // Each missile leaves its launcher's glyph, joins Site A's compact salvo cloud within a few drawn formation radii,
+      // and fans out onto its target's glyph on the last stretch. Display aid [S]: the packet centre stays on its solved
+      // path, and its counts and timing are the replay's.
+      const fromEdge = Math.min(0.45, Math.max(0.04, (FUNNEL_RADII * this.drawnRadiusKm(ctx, p.fromUnit)) / flight));
+      const toEdge = Math.min(0.45, Math.max(0.04, (FUNNEL_RADII * this.drawnRadiusKm(ctx, p.toUnit)) / flight));
+      const pull = (f: number): [number, number] => [1 - smoothstep(0, fromEdge, f), smoothstep(1 - toEdge, 1, f)];
+      const scatter = (f: number, age: number) => Math.max(packetSpreadKm(age), salvoSpreadKm(flight, f)) / this.origin.kmPerUnit;
+      const fHead = covered(headKm), fTail = covered(tailKm);
       const counts = packetAliveAt(p, t);
       const base = streakRgb(this.sideRgb.get(p.side) ?? PALETTE.ink);
       const terminal = phase === DrivePhase.Terminal;
       const rgb = terminal ? mixRgb(base, [1, 1, 1], 0.3) : base;
       const intensity = phase === DrivePhase.Coast ? 0.8 : terminal ? 1.7 : 1;
-      this.headSpread[i] = spread(headKm, t - p.tLaunch);
+      this.headSpread[i] = scatter(fHead, t - p.tLaunch);
+      [this.headPull[i * 2], this.headPull[i * 2 + 1]] = pull(fHead);
+      const k = 1 / this.origin.kmPerUnit;
       this.streaks.write(i, {
-        head, headSpread: this.headSpread[i], tail, tailSpread: spread(tailKm, tTail - p.tLaunch),
+        head, headSpread: this.headSpread[i], tail, tailSpread: scatter(fTail, tTail - p.tLaunch),
+        launchOff: launchOff.set(this.launchOffKm[i * 3] * k, this.launchOffKm[i * 3 + 1] * k, this.launchOffKm[i * 3 + 2] * k),
+        aimOff: aimOff.set(this.aimOffKm[i * 3] * k, this.aimOffKm[i * 3 + 1] * k, this.aimOffKm[i * 3 + 2] * k),
+        headPull: pull(fHead), tailPull: pull(fTail),
         rgb: [rgb[0], rgb[1], rgb[2]], intensity, keep,
         ewShare: counts.attack + counts.ew > 0 ? counts.ew / (counts.attack + counts.ew) : 0, toArrival: p.tArrive - t,
       });
@@ -917,6 +1058,99 @@ export class EngagementView implements ScaleView {
       const ratio = plan.effectiveRatio === plan.ratio ? `1:${plan.ratio}` : `1:${plan.effectiveRatio} (capped from 1:${plan.ratio})`;
       const thinned = keep < 0.999 ? `, ${Math.max(1, Math.round(keep * 100))}% drawn in this crowded view` : '';
       this.sampling = `Sampling ${ratio}, ${fmtCount(plan.total)} missiles in flight${thinned}`;
+    }
+  }
+
+  /**
+   * Moves a point of packet i's flight the way its missiles are drawn: toward the launcher glyph `from` and the target
+   * glyph `to` (launch-table anchors), by the packet's current head pull. `p` is in render units.
+   */
+  private pullPoint(i: number, from: number, to: number, p: THREE.Vector3): THREE.Vector3 {
+    const k = 1 / this.origin.kmPerUnit;
+    const w0 = this.headPull[i * 2], w1 = this.headPull[i * 2 + 1];
+    if (w0 > 0 && this.streaks.anchorOffset(from, this.w)) {
+      p.addScaledVector(this.w.sub(this.v.set(this.launchOffKm[i * 3] * k, this.launchOffKm[i * 3 + 1] * k, this.launchOffKm[i * 3 + 2] * k)), w0);
+    }
+    if (w1 > 0 && this.streaks.anchorOffset(to, this.w)) {
+      p.addScaledVector(this.w.sub(this.v.set(this.aimOffKm[i * 3] * k, this.aimOffKm[i * 3 + 1] * k, this.aimOffKm[i * 3 + 2] * k)), w1);
+    }
+    return p;
+  }
+
+  /**
+   * Where a defensive kill is drawn: the solver puts it on the packet's path a few seconds out, so it moves onto the
+   * drawn formation as the missiles do, toward a glyph of the defending fleet nearest it, over the same funnel.
+   */
+  private killOnPlot(ctx: ViewContext, at: Vec3, side: string, seed: number, out: THREE.Vector3, defenders: Map<number, number[]>): THREE.Vector3 {
+    const { replay, frame } = ctx;
+    this.origin.point(at, out);
+    let fleet = -1;
+    let best = Infinity;
+    replay.units.forEach((u, i) => {
+      if (u.kind !== 'fleet' || u.side !== side || u.theater !== ctx.theater || frame.unitCount[i] === 0) return;
+      const d = Math.hypot(frame.unitPos[i * 3] - at[0], frame.unitPos[i * 3 + 1] - at[1], frame.unitPos[i * 3 + 2] - at[2]);
+      if (d < best) {
+        best = d;
+        fleet = i;
+      }
+    });
+    if (fleet < 0 || this.spread[fleet] <= 1) return out;
+    let ships = defenders.get(fleet);
+    if (!ships) {
+      ships = replay.units[fleet].shipIdx.filter((s) => this.placed[s] && UNDER_WAY.has(frame.shipStatus[s] as ShipStatus));
+      defenders.set(fleet, ships);
+    }
+    if (!ships.length) return out;
+    const s = ships[(Math.imul(seed ^ 0x9e3779b9, 2654435761) >>> 0) % ships.length];
+    const w = 1 - smoothstep(0, FUNNEL_RADII * this.drawnRadiusKm(ctx, fleet), best);
+    this.origin.point(frame.shipPos.subarray(s * 3, s * 3 + 3), this.v);
+    return out.add(this.w.set(this.display[s * 3] - this.v.x, this.display[s * 3 + 1] - this.v.y, this.display[s * 3 + 2] - this.v.z).multiplyScalar(w));
+  }
+
+  /** How far a unit is drawn about its centre this frame, km: its spread formation, or its LAC swarm. */
+  private drawnRadiusKm(ctx: ViewContext, unit: number): number {
+    const u = ctx.replay.units[unit];
+    return u.kind === 'lac' ? lacSpreadKm(ctx.frame.unitCount[unit]) : this.spread[unit] * this.slotRadius[unit];
+  }
+
+  /**
+   * Launcher and target glyph of each sampled missile of packet i: spread over the ships still fighting (by what they
+   * carry), and a share homing on the ship the solver aimed the packet at. Fixed per missile, so scrubbing never
+   * reshuffles them.
+   */
+  private missileAnchors(i: number, n: number): Float32Array {
+    const out = new Float32Array(n * 2);
+    const from = this.launchAnchors[i] ?? new Uint32Array(0);
+    const to = this.targetAnchors[i] ?? new Uint32Array(0);
+    const aim = this.aimAnchor[i];
+    const rng = mulberry32(hashSeed('missile-anchors', this.replay.packets[i].seed));
+    for (let k = 0; k < n; k++) {
+      const a = rng(), b = rng(), c = rng();
+      out[k * 2] = from.length ? from[Math.floor(a * from.length)] : 0;
+      out[k * 2 + 1] = aim >= 0 && c < AIMED_SHARE ? aim : to.length ? to[Math.floor(b * to.length)] : 0;
+    }
+    return out;
+  }
+
+  /** Every placed glyph's offset from its unit's centre, for the streaks to launch from and land on. */
+  private writeAnchors(ctx: ViewContext, on: boolean): void {
+    const { replay, frame } = ctx;
+    this.streaks.clearAnchors();
+    if (!on) return;
+    const c = new THREE.Vector3();
+    replay.ships.forEach((s, i) => {
+      if (!this.placed[i]) return;
+      this.origin.point(frame.unitPos.subarray(s.unit * 3, s.unit * 3 + 3), c);
+      this.streaks.setAnchor(1 + i, this.display[i * 3] - c.x, this.display[i * 3 + 1] - c.y, this.display[i * 3 + 2] - c.z);
+    });
+    for (const [unit, base] of this.lacAnchorBase) {
+      const u = replay.units[unit];
+      const n = frame.unitCount[unit];
+      if (u.theater !== ctx.theater || n === 0) continue;
+      // The first of the swarm's drawn dots (drawLacs uses the same seeded offsets).
+      const off = this.cache.offsets(hashSeed('lac', u.id), LAC_ANCHORS);
+      const r = lacSpreadKm(n) / this.origin.kmPerUnit;
+      for (let k = 0; k < LAC_ANCHORS; k++) this.streaks.setAnchor(base + k, off[k * 3] * r, off[k * 3 + 1] * r, off[k * 3 + 2] * r);
     }
   }
 
@@ -933,11 +1167,14 @@ export class EngagementView implements ScaleView {
         if (this.replay.units[packet.fromUnit].theater !== ctx.theater || t < packet.tLaunch || t >= packet.tLaunch + LAUNCH_CUE_S || launches.has(packet.salvoId)) continue;
         launches.add(packet.salvoId);
         const kind = this.launchKinds.get(packet.planId) ?? 'tube';
-        const p = this.origin.point(packet.segments[0].p0, new THREE.Vector3());
         const fade = ctx.reducedMotion ? 0.7 : 1 - (t - packet.tLaunch) / LAUNCH_CUE_S;
         const rgb = kind === 'tube' ? streakRgb(this.sideRgb.get(packet.side) ?? PALETTE.ink) : POD_FLASH_RGB;
-        this.glows.push(p, 2_000 * k, kind === 'tube' ? 5 : 8, rgb, 1.5 * fade, GLOW.spark);
+        // The whole firing line flashes: every ship the salvo leaves from, where it is drawn.
+        const ships = (this.salvoLaunchers.get(packet.salvoId) ?? []).flatMap((s) => this.shown.get(s) ?? []);
+        if (ships.length) for (const p of ships) this.glows.push(p, 1_500 * k, kind === 'tube' ? 3.5 : 4.5, rgb, 1.3 * fade, GLOW.spark);
+        else this.glows.push(this.origin.point(packet.segments[0].p0, new THREE.Vector3()), 2_000 * k, kind === 'tube' ? 5 : 8, rgb, 1.5 * fade, GLOW.spark);
       }
+      const defenders = new Map<number, number[]>();
       for (let i = firstAtOrAfter(this.beams, t - this.maxBeamDur); i < this.beams.length && this.beams[i].t <= t; i++) {
         const b = this.beams[i];
         if (t >= b.t + b.dur || this.beamTheaters.get(b) !== ctx.theater) continue;
@@ -965,9 +1202,9 @@ export class EngagementView implements ScaleView {
         } else if (b.kind === 'transit') {
           this.glows.push(z, 16_000 * k, 16, FOOTPRINT_RGB, 2.2 * (ctx.reducedMotion ? 0.75 : 1 - u), GLOW.ring);
         } else if (b.kind === 'cm-kill') {
-          this.glows.push(z, 300 * k, 3.5, CM_RGB, 2 * fade, GLOW.spark);
+          this.glows.push(this.killOnPlot(ctx, b.to, b.side, i, z, defenders), 300 * k, 3.5, CM_RGB, 2 * fade, GLOW.spark);
         } else {
-          this.glows.push(z, 200 * k, 3, PD_RGB, 1.7 * fade, GLOW.spark);
+          this.glows.push(this.killOnPlot(ctx, b.to, b.side, i, z, defenders), 200 * k, 3, PD_RGB, 1.7 * fade, GLOW.spark);
         }
       }
       for (const d of this.deaths) {
@@ -1025,7 +1262,10 @@ export class EngagementView implements ScaleView {
           const u = ((h & 0xffff) / 0xffff) * 2 - 1;
           const phi = ((h >>> 16) / 0xffff) * Math.PI * 2;
           const r = 0.8 * this.headSpread[i] * Math.sqrt(1 - u * u);
-          this.origin.point(frame.packetPos.subarray(i * 3, i * 3 + 3), end).add(this.v.set(r * Math.cos(phi), r * Math.sin(phi), 0.8 * this.headSpread[i] * u));
+          const from = this.launchAnchors[i] ?? new Uint32Array(0), to = this.targetAnchors[i] ?? new Uint32Array(0);
+          this.origin.point(frame.packetPos.subarray(i * 3, i * 3 + 3), end);
+          this.pullPoint(i, from.length ? from[h % from.length] : 0, to.length ? to[(h >>> 7) % to.length] : 0, end);
+          end.add(this.v.set(r * Math.cos(phi), r * Math.sin(phi), 0.8 * this.headSpread[i] * u));
           const fade = smoothstep(p.tLaunch + 1.5, p.tLaunch + 8, t);
           this.links.push(mother, end, TELEMETRY_RGB, 0.6 * fade, 1, 0.5 + (i % 97) / 97);
         }
@@ -1034,7 +1274,7 @@ export class EngagementView implements ScaleView {
     this.links.commit();
   }
 
-  /** Stress bands and sidewalls at physical size (MTS §3.1, §6.1), nearest ships to the camera target first. */
+  /** Stress bands and sidewalls at physical size (MTS §3.1, §6.1) on each drawn glyph, nearest ships to the camera target first. */
   private drawWedges(ctx: ViewContext, on: boolean): void {
     const { replay, frame } = ctx;
     this.wedgeLines.begin();
@@ -1043,7 +1283,7 @@ export class EngagementView implements ScaleView {
       const target = this.controls?.target ?? new THREE.Vector3();
       const order = this.shipsInView
         .filter((i) => WEDGE_UP.has(frame.shipStatus[i] as ShipStatus))
-        .map((i) => ({ i, c: this.origin.point(frame.shipPos.subarray(i * 3, i * 3 + 3), new THREE.Vector3()) }))
+        .map((i) => ({ i, c: this.shown.get(i)?.clone() ?? this.origin.point(frame.shipPos.subarray(i * 3, i * 3 + 3), new THREE.Vector3()) }))
         .sort((a, b) => a.c.distanceToSquared(target) - b.c.distanceToSquared(target))
         .slice(0, WEDGE_CAP);
       const bases = new Map<number, ReturnType<typeof orientationAt>>();
@@ -1142,7 +1382,7 @@ export class EngagementView implements ScaleView {
   status(): ViewStatus {
     return {
       samplingText: this.sampling,
-      scaleNote: 'Range rings centre on my side\'s fleet nearest the camera and are to scale; the hyper limits and resonance zone are the pack\'s. Class glyphs have bounded CSS-pixel sizes [S]; crowded fleets use a bounded, class-grouped display formation [S] with fleet centres and counts unchanged. Each streak is one sampled missile on its packet\'s solved path; crowded views draw a share of the sample. Packet/LAC spread, seven-second trails, launch cues and ship-death glows are display aids [S]; beam durations are unchanged. Wedges, ranges and uncertainty are to scale.',
+      scaleNote: 'Range rings centre on my side\'s fleet nearest the camera and are to scale; the hyper limits and resonance zone are the pack\'s. Class glyphs have bounded CSS-pixel sizes [S]; each fleet keeps its 3D formation, drawn larger about its true centre when zoomed out so ships stay apart [S], with centres and counts unchanged. Each streak is one sampled missile: it leaves a ship of its fleet, flies its packet\'s solved path and comes down on a ship of the target fleet [S]; crowded views draw a share of the sample. Packet/LAC spread, seven-second trails, launch cues and ship-death glows are display aids [S]; beam durations are unchanged. Wedges, ranges and uncertainty are to scale.',
       notice: this.notice,
     };
   }
@@ -1165,6 +1405,11 @@ export class EngagementView implements ScaleView {
     out.set(a);
     out.set(b, a.length);
     return out;
+  }
+
+  /** Where a ship's glyph is drawn this frame, render units; null when it is not drawn. */
+  shipOnPlot(ship: number): THREE.Vector3 | null {
+    return this.shown.get(ship)?.clone() ?? null;
   }
 
   /** [head, tail] pairs of the streaks drawn this frame, in render units. */
