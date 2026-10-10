@@ -26,6 +26,30 @@ export function packetTrailAt(packet: PacketTrack, t: number, phase: DrivePhase,
 
 export const trailStride = (dots: number, cap = TRAIL_CAP): number => Math.max(1, Math.ceil(dots / Math.max(1, cap)));
 
+/** Site A's streak history (A report §4.7): seven seconds under drive, a quarter of that coasting. */
+export const STREAK_TRAIL_S = 7;
+export const COAST_TRAIL_SHARE = 0.25;
+
+/**
+ * When a missile streak's tail was: A's history window, never before launch nor, on the terminal leg, before the
+ * terminal burn began; then shortened so the chord to the head stays within maxKm. Both ends stay on the solved path.
+ */
+export function streakTailT(packet: PacketTrack, t: number, phase: DrivePhase, terminalT0: number, maxKm: number): number {
+  const now = Math.min(Math.max(t, packet.tLaunch), packet.tArrive);
+  const window = phase === DrivePhase.Coast ? STREAK_TRAIL_S * COAST_TRAIL_SHARE : STREAK_TRAIL_S;
+  let low = Math.max(packet.tLaunch, now - window);
+  if (phase === DrivePhase.Terminal && terminalT0 <= now) low = Math.max(low, terminalT0);
+  const head = packetPositionAt(packet, now);
+  if (!(maxKm > 0) || dist(head, packetPositionAt(packet, low)) <= maxKm) return low;
+  let high = now;
+  for (let i = 0; i < 24; i++) {
+    const mid = (low + high) / 2;
+    if (dist(head, packetPositionAt(packet, mid)) > maxKm) low = mid;
+    else high = mid;
+  }
+  return high;
+}
+
 export function beamTheater(beam: BeamEvent, replay: Replay): string | null {
   const ship = replay.ships[beam.ship];
   if (ship) return replay.units[ship.unit].theater;

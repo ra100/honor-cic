@@ -168,8 +168,8 @@ select.tb option, select option { background: #0b1424; color: var(--ink); }
 .sep { color: var(--ink-faint); }
 
 #forces { left: var(--gutter); top: 150px; width: 262px; max-height: calc(100% - 420px); overflow: auto; padding: 10px 12px 12px; scrollbar-width: thin; }
-.fleet { padding: 7px 0 8px; border-top: 1px solid var(--hair); }
-.fleet:first-of-type { border-top: 0; padding-top: 4px; }
+#forces .fleet { padding: 7px 0 8px; border-top: 1px solid var(--hair); }
+#forces .fleet:first-of-type { border-top: 0; padding-top: 4px; }
 .fleet-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .fleet-n { background: none; border: 0; padding: 0; font: 600 12.5px/1.3 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: inherit; text-align: left; }
 .fleet-n:hover { text-decoration: underline; }
@@ -181,9 +181,9 @@ select.tb option, select option { background: #0b1424; color: var(--ink); }
 .bar i { position: absolute; top: 0; bottom: 0; left: 0; display: block; }
 .bar i.ok { background: currentColor; opacity: 0.85; }
 .bar i.cr { background: var(--amber); opacity: 0.8; }
-.fleet.allied { color: var(--allied); }
-.fleet.hostile { color: var(--hostile-ink); }
-.fleet.dormant { opacity: 0.45; }
+#forces .fleet.allied { color: var(--allied); }
+#forces .fleet.hostile { color: var(--hostile-ink); }
+#forces .fleet.dormant { opacity: 0.45; }
 .note-star { color: var(--ink-faint); font-size: 11px; }
 
 #side { right: var(--gutter); top: 150px; width: 300px; max-height: calc(100% - 290px); display: flex; flex-direction: column; padding: 0; }

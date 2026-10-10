@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { createFrame, sampleFrame } from '../../src/core/replay';
 import { solve } from '../../src/core/solver/solve';
 import { TECH } from '../../src/core/tech';
+import { fmtCount } from '../../src/core/units';
+import { planDensity } from '../../src/render/density';
 import { EngagementView } from '../../src/render/scales/engagement-view';
 import { LAYERS, type ViewContext } from '../../src/render/scales/types';
 import { getPack } from '../../src/registry';
@@ -168,6 +170,75 @@ describe('EngagementView', () => {
     const v = new EngagementView(pack, local, null);
     v.update({ ...ctx(100.1), replay: local, frame: sampleFrame(local, 100.1, createFrame(local)) });
     expect(v.drawCounts().fx).toBe(0);
+  });
+
+  it('centres the range rings on my fleet and strings true distances along the bearing to the enemy', () => {
+    const v = new EngagementView(pack, replay, null);
+    const c = ctx(inFlight);
+    v.update(c);
+    const at = (i: number) => Array.from(c.frame.unitPos.subarray(i * 3, i * 3 + 3));
+    const mine = replay.units.findIndex((u) => u.side === 'alliance');
+    const enemy = replay.units.findIndex((u) => u.side === 'haven');
+    const plan = v.ringPlan()!;
+    expect(plan.unit).toBe(mine);
+    expect(plan.centre).toEqual(at(mine));
+    const [dx, dy] = [at(enemy)[0] - at(mine)[0], at(enemy)[1] - at(mine)[1]];
+    expect(plan.bearing[0]).toBeCloseTo(dx / Math.hypot(dx, dy), 9);
+    expect(plan.bearing[1]).toBeCloseTo(dy / Math.hypot(dx, dy), 9);
+    expect(plan.enemyKm).toBeCloseTo(Math.hypot(dx, dy, at(enemy)[2] - at(mine)[2]), 3);
+    expect(plan.labels.length).toBeGreaterThan(0);
+    for (const label of plan.labels) {
+      expect(label.km % (2 * plan.step)).toBe(0);
+      expect(label.km).toBeLessThan(plan.radius);
+    }
+    v.update({ ...c, focusSide: 'haven' });
+    expect(v.ringPlan()!.unit).toBe(enemy);
+  });
+
+  it('keeps the true missile count while sampling and thinning streaks', () => {
+    const v = new EngagementView(pack, replay, null);
+    for (const density of [1, 4, 16]) {
+      const c = ctx(inFlight, { density });
+      v.update(c);
+      const alive = Uint32Array.from(replay.packets, (p, i) => replay.units[p.toUnit].theater === 'range' ? c.frame.packetAlive[i] : 0);
+      const plan = planDensity(alive, density);
+      expect(v.status().samplingText).toContain(`${fmtCount(plan.total)} missiles in flight`);
+      expect(v.drawCounts().dots).toBe(plan.dots);
+      expect(v.drawCounts().trails).toBeLessThanOrEqual(plan.dots);
+    }
+  });
+
+  it('never moves the solved replay it draws', () => {
+    const c = ctx(inFlight);
+    const before = [c.frame.shipPos, c.frame.unitPos, c.frame.packetPos, c.frame.packetAlive].map((a) => Array.from(a));
+    const v = new EngagementView(pack, replay, null);
+    v.update(c);
+    v.update({ ...c, density: 16 });
+    v.update({ ...c, focusSide: 'haven' });
+    expect([c.frame.shipPos, c.frame.unitPos, c.frame.packetPos, c.frame.packetAlive].map((a) => Array.from(a))).toEqual(before);
+    const fresh = sampleFrame(replay, inFlight, createFrame(replay));
+    expect(Array.from(fresh.packetPos)).toEqual(before[2]);
+  });
+
+  it('labels each fleet with Site A’s name over commander and wall strength', () => {
+    const v = new EngagementView(pack, replay, null);
+    v.update(ctx(inFlight));
+    const fleets = v.labels().filter((l) => l.key.startsWith('unit:'));
+    expect(fleets).toHaveLength(2);
+    for (const label of fleets) {
+      expect(label.cls).toMatch(/^fleet (allied|hostile)$/);
+      expect(label.sub).toMatch(/\d+ ships( of the wall)?$/);
+    }
+    expect(fleets.map((l) => l.cls).sort()).toEqual(['fleet allied', 'fleet hostile']);
+  });
+
+  it('keeps its own ring and fleet labels off the HUD boxes over the plot', () => {
+    const v = new EngagementView(pack, replay, null);
+    v.update(ctx(inFlight));
+    expect(v.drawCounts().rings).toBeGreaterThan(0);
+    v.update(ctx(inFlight, { obstacles: [{ x: -1e4, y: -1e4, width: 2e4, height: 2e4 }] }));
+    expect(v.drawCounts().rings).toBe(0);
+    expect(v.labels().filter((l) => l.key.startsWith('unit:') && l.offset)).toHaveLength(0);
   });
 
   it('bounds LAC samples and uses distinct chevrons without pretending they are physical slots', () => {
