@@ -40,6 +40,8 @@ export interface ViewContext {
   density: number;
   theater: string;
   selectedShip: number | null;
+  /** Unit index the free camera follows, when it follows a single unit; range rings centre on it when it is mine. */
+  followUnit?: number | null;
   selectedClass: string | null;
   reducedMotion: boolean;
   plotInsets?: PlotInsets;
@@ -79,6 +81,8 @@ export interface ScaleView {
   setPose(eyeKm: Vec3, targetKm: Vec3): void;
   /** Move the look-at point to this physical position, keeping the user's angle and distance. */
   followTarget(targetKm: Vec3): void;
+  /** Frames a unit picked to follow on the next update when it is off the plot or too small to read. */
+  frameUnit?(unit: number): void;
   labels(): LabelSpec[];
   /** Ship index under the pointer, or null. */
   pick(ndcX: number, ndcY: number): number | null;

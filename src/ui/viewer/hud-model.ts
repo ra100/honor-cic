@@ -98,6 +98,36 @@ export function forceUnits(pack: ScenarioPack, r: Replay, frame: Frame, only: st
   });
 }
 
+export interface FollowChoice { id: string; name: string; ally: boolean; present: boolean }
+export interface FollowGroup { theater: string; label: string; choices: FollowChoice[] }
+
+/** Follow picker: every fleet and LAC group, per theater. The perceived picture lists only the commander's side. */
+export function followGroups(pack: ScenarioPack, r: Replay, frame: Frame, only: string | null): FollowGroup[] {
+  const ally = r.sides[0]?.id;
+  return pack.meta.theaters.map((th) => ({
+    theater: th.id,
+    label: th.label,
+    choices: r.units.filter((u) => u.theater === th.id && (only === null || u.side === only))
+      .map((u) => ({ id: u.id, name: u.name, ally: u.side === ally, present: frame.unitCount[u.idx] > 0 })),
+  })).filter((g) => g.choices.length > 0);
+}
+
+/** The next (dir 1) or previous (dir -1) present unit of the theater after the current one, wrapping round. */
+export function cycleFollow(groups: FollowGroup[], theater: string, current: string | null, dir: 1 | -1): string | null {
+  const ids = groups.find((g) => g.theater === theater)?.choices.filter((c) => c.present).map((c) => c.id) ?? [];
+  if (ids.length === 0) return null;
+  const at = current === null ? -1 : ids.indexOf(current);
+  if (at < 0) return dir > 0 ? ids[0] : ids[ids.length - 1];
+  return ids[(at + dir + ids.length) % ids.length];
+}
+
+/** Names of the followed units for the caption, e.g. "Home Fleet and Second Fleet". */
+export function followLabel(r: Replay, ids: string[]): string | null {
+  const names = ids.map((id) => r.units.find((u) => u.id === id)?.name ?? id);
+  if (names.length === 0) return null;
+  return names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 /** Scrubber segments: each phase runs to the next mark (Site A §7.7). */
 export function phaseSpans(marks: PhaseMark[], duration: number): Array<{ label: string; left: number; width: number; t: number }> {
   const sorted = [...marks].sort((a, b) => a.t - b.t);

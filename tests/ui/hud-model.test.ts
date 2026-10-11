@@ -5,7 +5,7 @@ import { TECH } from '../../src/core/tech';
 import { LM_KM } from '../../src/core/units';
 import { shotsFor } from '../../src/render/director';
 import { getPack } from '../../src/registry';
-import { debrief, forceUnits, limitText, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies } from '../../src/ui/viewer/hud-model';
+import { cycleFollow, debrief, followGroups, followLabel, forceUnits, limitText, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies } from '../../src/ui/viewer/hud-model';
 import { phaseMarks } from '../../src/ui/viewer/model';
 
 describe('HUD model (Site A tallies, forces, scrubber and captions)', () => {
@@ -45,6 +45,33 @@ describe('HUD model (Site A tallies, forces, scrubber and captions)', () => {
     expect(lacsAt(0).lacText).toBe('2,300/2,300');
     expect(lacsAt(replay.duration_s).lacText).toBe(`${lacCountAt(hfLacs, replay.duration_s).toLocaleString('en-US')}/2,300`);
     expect(lacCountAt(hfLacs, replay.duration_s)).toBeGreaterThan(0);
+  });
+
+  it('lists follow targets per theater, LAC groups included, and only the own side when perceived', () => {
+    const f = sampleFrame(replay, 1860, createFrame(replay));
+    const groups = followGroups(pack, replay, f, null);
+    expect(groups.map((g) => g.label)).toEqual(pack.meta.theaters.map((th) => th.label));
+    const all = groups.flatMap((g) => g.choices);
+    expect(all).toHaveLength(replay.units.length);
+    expect(all.find((c) => c.id === 'hf-lacs')).toMatchObject({ name: 'Home Fleet LACs', ally: true, present: true });
+    expect(all.find((c) => c.id === 'second-fleet')).toMatchObject({ ally: false, present: true });
+    expect(all.find((c) => c.id === 'fifth-fleet')!.present).toBe(false);
+    const own = followGroups(pack, replay, f, 'alliance').flatMap((g) => g.choices);
+    expect(own.length).toBeGreaterThan(0);
+    expect(own.every((c) => c.ally)).toBe(true);
+  });
+
+  it('cycles the follow target through the present units of the theater and names what is followed', () => {
+    const groups = followGroups(pack, replay, sampleFrame(replay, 1860, createFrame(replay)), null);
+    const present = groups.find((g) => g.theater === 'sphinx')!.choices.filter((c) => c.present).map((c) => c.id);
+    expect(present.length).toBeGreaterThan(2);
+    expect(cycleFollow(groups, 'sphinx', null, 1)).toBe(present[0]);
+    expect(cycleFollow(groups, 'sphinx', present[0], 1)).toBe(present[1]);
+    expect(cycleFollow(groups, 'sphinx', present[0], -1)).toBe(present[present.length - 1]);
+    expect(cycleFollow(groups, 'junction', null, 1)).toBe('diamato');
+    expect(followLabel(replay, ['hf-lacs'])).toBe('Home Fleet LACs');
+    expect(followLabel(replay, ['home-fleet', 'second-fleet'])).toBe('Home Fleet and Second Fleet');
+    expect(followLabel(replay, [])).toBeNull();
   });
 
   it('lays phase segments end to end and puts one tick on each salvo', () => {

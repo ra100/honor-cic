@@ -70,6 +70,35 @@ test('scale tabs switch between System, Engagement and Ship detail', async ({ pa
   expect(errors).toEqual([]);
 });
 
+test('the follow picker follows a fleet or a LAC group, and N cycles the target', async ({ page, isMobile }) => {
+  const errors = watchErrors(page);
+  await openBattle(page, 'manticore');
+  await page.getByRole('tab', { name: 'Engagement' }).click();
+  await setState(page, { t: 1860 });
+  const picker = page.getByRole('combobox', { name: 'Follow target' });
+  await expect(picker.locator('option[value="fifth-fleet"]')).toBeDisabled();
+  await picker.selectOption('hf-lacs');
+  expect(await state(page, 'followUnit')).toBe('hf-lacs');
+  expect(await state(page, 'follow')).toBe(true);
+  await expect(page.locator('#caption .shot-no')).toHaveText('Free camera · following Home Fleet LACs');
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('n');
+  expect(await state(page, 'followUnit')).toBe('sf-lacs');
+  await expect(picker).toHaveValue('sf-lacs');
+  await page.keyboard.press('Shift+N');
+  expect(await state(page, 'followUnit')).toBe('hf-lacs');
+  // On a phone Forces is a sheet over the context tools: open it to pick a fleet, then close it again.
+  const forcesSheet = page.locator('#hudToggles').getByRole('button', { name: 'Forces' });
+  if (isMobile) await forcesSheet.click();
+  await page.locator('#forces .fleet[data-unit="second-fleet"] .fleet-n').click();
+  expect(await state(page, 'followUnit')).toBe('second-fleet');
+  if (isMobile) await forcesSheet.click();
+  await expect(picker).toHaveValue('second-fleet');
+  await picker.selectOption('');
+  expect(await state(page, 'followUnit')).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test('system presets frame the binary, the companion and the outer orbits', async ({ page }) => {
   const errors = watchErrors(page);
   await openBattle(page, 'manticore');

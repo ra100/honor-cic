@@ -23,8 +23,10 @@ export interface ViewerState {
   speed: Speed;
   scale: ScaleId;
   camera: 'director' | 'free';
-  /** Free camera keeps moving with the selected fleet or the current engagement. */
+  /** Free camera keeps moving with the followed unit, the selected fleet or the current engagement. */
   follow: boolean;
+  /** Unit id picked to follow; null follows the selected ship's fleet or the current engagement. */
+  followUnit: string | null;
   theater: string;
   layers: Record<LayerId, boolean>;
   perceived: { enabled: boolean; side: string };
@@ -49,7 +51,7 @@ export interface ViewerState {
 export function initialState(pack: ScenarioPack, reducedMotion: boolean): ViewerState {
   const hasShots = pack.meta.shots.length > 0;
   return {
-    t: 0, playing: false, speed: 'auto', scale: hasShots ? pack.meta.shots[0].scale : 'engagement', camera: hasShots ? 'director' : 'free', follow: true,
+    t: 0, playing: false, speed: 'auto', scale: hasShots ? pack.meta.shots[0].scale : 'engagement', camera: hasShots ? 'director' : 'free', follow: true, followUnit: null,
     theater: hasShots ? pack.meta.shots[0].theater : pack.meta.theaters[0].id, layers: { ...DEFAULT_LAYERS },
     perceived: { enabled: false, side: pack.meta.sides[0].id }, density: 4, selectedShip: null, selectedClass: null,
     logSide: 'all',

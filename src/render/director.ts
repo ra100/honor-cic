@@ -229,10 +229,16 @@ export function subjectCentroid(replay: Replay, frame: Frame, ids: string[]): Ve
 }
 
 /**
- * What the free camera follows: the selected ship's unit, else the current shot's subjects.
- * In the perceived picture only the commander's own side, so following never reveals a true enemy position.
+ * What the free camera follows: the picked unit when it is in the theater shown, else the selected ship's unit, else the
+ * current shot's subjects. In the perceived picture only the commander's own side, so following never reveals a true
+ * enemy position.
  */
-export function followSubjects(replay: Replay, shots: DirectorShot[], t: number, selectedShip: number | null, perceivedSide: string | null): string[] {
+export function followSubjects(
+  replay: Replay, shots: DirectorShot[], t: number, selectedShip: number | null, perceivedSide: string | null,
+  followUnit: string | null = null, theater: string | null = null,
+): string[] {
+  const picked = followUnit === null ? undefined : replay.units.find((u) => u.id === followUnit);
+  if (picked && (theater === null || picked.theater === theater) && (perceivedSide === null || picked.side === perceivedSide)) return [picked.id];
   const sel = selectedShip !== null ? replay.ships[selectedShip] : undefined;
   let ids = sel ? [replay.units[sel.unit].id] : shotAt(shots, t)?.subject ?? [];
   if (perceivedSide !== null) {

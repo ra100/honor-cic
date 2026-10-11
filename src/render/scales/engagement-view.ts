@@ -43,6 +43,8 @@ const RECENTER_KM = 50_000;
 const REFRAME_AFTER_S = 120;
 /** Most LACs drawn per group; a larger group is drawn as a random share of its wing. */
 const LAC_DOTS_PER_GROUP = 4_000;
+/** A unit picked to follow is framed unless its drawn formation already spans this many pixels on the plot. */
+const FRAMED_PX = 30;
 /** Ships around its aim that a LAC packet's missiles spread over [S]. */
 const LAC_AIM_SHIPS = 4;
 /** Site A's LAC icon: a solid disc 1.8 px in radius (A report §4.5). */
@@ -201,6 +203,7 @@ export class EngagementView implements ScaleView {
   private readonly wingFrames = new Map<number, { c: THREE.Vector3; b: ReturnType<typeof orientationAt>; k: number }>();
   /** Per unit: its formation's radius, km. */
   private readonly slotRadius: Float64Array;
+  private framePending: number | null = null;
   /** Per unit, how many times larger than life its formation is drawn this frame. */
   private readonly spread: Float64Array;
   /** Where every ship of the theater is drawn this frame (render units), and whether it has a place. */
@@ -428,6 +431,12 @@ export class EngagementView implements ScaleView {
       // Back on this tab, or scrubbed far with nothing left in the plot: frame what is happening around the look point.
       this.frameTheater(ctx, this.lookKm());
     }
+    const picked = this.framePending;
+    this.framePending = null;
+    if (picked !== null && !externalPose && ctx.frame.unitCount[picked] > 0 && ctx.replay.units[picked].theater === ctx.theater
+      && !this.readable(ctx, picked, height)) {
+      this.frameTheater(ctx, [ctx.frame.unitPos[picked * 3], ctx.frame.unitPos[picked * 3 + 1], ctx.frame.unitPos[picked * 3 + 2]], picked);
+    }
     if (externalPose || (!newTheater && scale !== this.plotScale)) {
       const target = this.controls?.target ?? new THREE.Vector3();
       this.camera.position.sub(target).multiplyScalar(externalPose ? scale : scale / this.plotScale).add(target);
@@ -459,7 +468,8 @@ export class EngagementView implements ScaleView {
    * With no `around` it fits every unit in the theater; with one it keeps that look point and fits my nearest fleet and
    * the enemy it faces.
    */
-  private frameTheater(ctx: ViewContext, around?: Vec3): void {
+  /** Frames the theater, or what is happening around a point, or (with `subject`) that one unit as drawn. */
+  private frameTheater(ctx: ViewContext, around?: Vec3, subject?: number): void {
     const { frame } = ctx;
     const pts: Vec3[] = [];
     // Formations as drawn: FORMATION_SCALE times their true size about each centre.
@@ -473,9 +483,11 @@ export class EngagementView implements ScaleView {
         pts.push([c[0] + (p[0] - c[0]) * FORMATION_SCALE, c[1] + (p[1] - c[1]) * FORMATION_SCALE, c[2] + (p[2] - c[2]) * FORMATION_SCALE]);
       }
     };
-    if (around) {
+    if (subject !== undefined) {
+      add(subject);
+    } else if (around) {
       pts.push(around);
-      const own = ringCentreUnit(this.replay, frame, ctx.theater, ctx.focusSide, around, ctx.selectedShip);
+      const own = ringCentreUnit(this.replay, frame, ctx.theater, ctx.focusSide, around, ctx.selectedShip, ctx.followUnit ?? null);
       if (own !== null) {
         add(own);
         const foe = ctx.perceived.enabled ? null
@@ -493,7 +505,8 @@ export class EngagementView implements ScaleView {
     }
     const box = new THREE.Box3().setFromPoints(pts.map((p) => new THREE.Vector3(...p)));
     const c = around ?? (box.getCenter(new THREE.Vector3()).toArray() as Vec3);
-    const mine = ringCentreUnit(this.replay, frame, ctx.theater, ctx.focusSide, c, ctx.selectedShip);
+    const mine = subject !== undefined && this.replay.units[subject].side === ctx.focusSide ? subject
+      : ringCentreUnit(this.replay, frame, ctx.theater, ctx.focusSide, c, ctx.selectedShip, ctx.followUnit ?? null);
     let az = (-60 * Math.PI) / 180;
     if (mine !== null) {
       const own: Vec3 = [frame.unitPos[mine * 3], frame.unitPos[mine * 3 + 1], frame.unitPos[mine * 3 + 2]];
@@ -558,6 +571,21 @@ export class EngagementView implements ScaleView {
     this.camera.updateMatrixWorld();
     this.controls?.target.set(0, 0, 0);
     this.posePending = true;
+  }
+
+  /** Frames `unit` on the next update, unless it is already on the plot and big enough to read. */
+  frameUnit(unit: number): void {
+    this.framePending = unit;
+  }
+
+  /** Whether unit i's centre is well inside the plot and its drawn formation spans at least FRAMED_PX. */
+  private readable(ctx: ViewContext, i: number, height: number): boolean {
+    const c = this.origin.point(ctx.frame.unitPos.subarray(i * 3, i * 3 + 3), new THREE.Vector3());
+    const ndc = c.clone().project(this.camera);
+    if (!(ndc.z > -1 && ndc.z < 1) || Math.abs(ndc.x) > 0.8 || Math.abs(ndc.y) > 0.8) return false;
+    const depth = this.camera.position.distanceTo(c) * this.origin.kmPerUnit;
+    const kmPerPx = (2 * depth * Math.tan((this.camera.fov * Math.PI) / 360)) / (height * this.camera.zoom);
+    return (2 * this.drawnRadiusKm(i)) / kmPerPx >= FRAMED_PX;
   }
 
   followTarget(targetKm: Vec3): void {
@@ -845,7 +873,7 @@ export class EngagementView implements ScaleView {
         }
       }
     } else {
-      unit = ringCentreUnit(replay, frame, ctx.theater, ctx.focusSide, look, ctx.selectedShip);
+      unit = ringCentreUnit(replay, frame, ctx.theater, ctx.focusSide, look, ctx.selectedShip, ctx.followUnit ?? null);
       if (unit === null) {
         // No fleet of mine here: centre on the nearest present unit so distances still read.
         let best = Infinity;
@@ -1576,7 +1604,7 @@ export class EngagementView implements ScaleView {
   status(): ViewStatus {
     return {
       samplingText: this.sampling,
-      scaleNote: 'Range rings centre on my side\'s fleet nearest the camera and are to scale; the hyper limits and resonance zone are the pack\'s. Class glyphs have bounded CSS-pixel sizes [S]. Every formation is drawn four times life size about its true centre at every zoom, so fleets keep one size and compare with each other [S]; centres, headings and counts are unchanged. Every LAC is a dot in a squadron of 12 on its wing\'s disc, also four times life size, and losses flash as they happen [S]. Each streak is one sampled missile: it leaves a ship or LAC of its group, flies its packet\'s solved path and comes down on a ship of the target fleet [S]; crowded views draw a share of the sample. Seven-second trails, launch cues and kill flashes are display aids [S]; beam timing is unchanged. Wedges, ranges and uncertainty are to scale.',
+      scaleNote: 'Range rings centre on my side\'s fleet nearest the camera, or on the unit the camera follows, and are to scale; the hyper limits and resonance zone are the pack\'s. Class glyphs have bounded CSS-pixel sizes [S]. Every formation is drawn four times life size about its true centre at every zoom, so fleets keep one size and compare with each other [S]; centres, headings and counts are unchanged. Every LAC is a dot in a squadron of 12 on its wing\'s disc, also four times life size, and losses flash as they happen [S]. Each streak is one sampled missile: it leaves a ship or LAC of its group, flies its packet\'s solved path and comes down on a ship of the target fleet [S]; crowded views draw a share of the sample. Seven-second trails, launch cues and kill flashes are display aids [S]; beam timing is unchanged. Wedges, ranges and uncertainty are to scale.',
       notice: this.notice,
     };
   }

@@ -2,7 +2,7 @@ import { EVIDENCE_TEXT, type EvidenceLabel } from '../../core/evidence';
 import type { Frame, Replay } from '../../core/replay';
 import type { ScenarioPack } from '../../core/schema';
 import type { TechRegistry } from '../../core/tech';
-import { directorSpeed, type DirectorShot } from '../../render/director';
+import { directorSpeed, followSubjects, type DirectorShot } from '../../render/director';
 import type { PlotInsets, PlotRect } from '../../render/framing';
 import { LAYER_TEXT, LAYERS, type ScaleId, type SystemFocus } from '../../render/scales/types';
 import { clear, h } from '../dom';
@@ -11,7 +11,10 @@ import { renderNotes, safeNoteUrl } from '../notes';
 import { CATALOG_HREF } from '../router';
 import type { Store } from '../store';
 import { CAPTION as SHIP_CAPTION } from '../../render/ship/site-b';
-import { debrief, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies, type Debrief } from './hud-model';
+import {
+  cycleFollow, debrief, followGroups, followLabel, monthYear, phaseAt, phaseSpans, salvoTicks, scaleBar, shotNumbers, speedChip, tallies,
+  type Debrief, type FollowGroup,
+} from './hud-model';
 import { occupiedPlotInsets, type PlotOccupancy } from './layout';
 import { DENSITIES, knownSide, nextPhase, prevPhase, scaleSelection, shipClassId, SPEEDS, type PhaseMark, type Speed, type ViewerState } from './model';
 import { ForcesPanel, InspectorPanel, LogPanel, ShipPanel } from './panels';
@@ -47,7 +50,7 @@ const SCALES: Array<{ id: ScaleId; label: string }> = [
 const KEYS: Array<[string, string]> = [
   ['Space', 'Play or pause'], ['Left / Right', 'Step 1 s, with Shift 60 s'], ['[ ]', 'Previous or next phase'],
   ['+ / -', 'Faster or slower'], ['1 2 3', 'System, Engagement or Ship detail'], ['D', 'Director camera'],
-  ['F', 'Free camera'], ['G', 'Follow the selected fleet or the current engagement'],
+  ['F', 'Free camera'], ['G', 'Follow on or off'], ['N', 'Follow the next fleet or LAC group, with Shift the previous one'],
   ['P', 'Switch between Actual and Perceived'], ['Esc', 'Close a menu, then clear the selection'],
 ];
 const LAYER_SWATCH: Record<(typeof LAYERS)[number], string> = {
@@ -175,7 +178,26 @@ export function buildHud(d: HudDeps): Hud {
     { id: 'outer', label: 'Outer orbits' },
   ];
   const presetButtons = presets.map((p) => ({ ...p, el: h('button', { class: 'ctx', type: 'button', onclick: () => set({ systemFocus: p.id, camera: 'free', follow: false }) }, p.label) }));
-  const followBtn = h('button', { class: 'ctx', type: 'button', title: 'Follow the selected fleet or the current engagement (G)', onclick: () => set({ follow: !store.get().follow, camera: 'free' }) }, 'Follow');
+  const followBtn = h('button', { class: 'ctx', type: 'button', title: 'Follow on or off (G)', onclick: () => set({ follow: !store.get().follow, camera: 'free' }) }, 'Follow');
+  const pickFollow = (id: string | null) => {
+    const unit = id === null ? undefined : replay.units.find((u) => u.id === id);
+    set({ followUnit: id, follow: true, camera: 'free', ...(unit ? { theater: unit.theater } : {}) });
+  };
+  const followSel = h('select', {
+    class: 'ctx-select', 'aria-label': 'Follow target', title: 'What the free camera follows (N, Shift+N)',
+    onchange: () => pickFollow(followSel.value || null),
+  });
+  let followSig = '';
+  let lastFrame: Frame | null = null;
+  const renderFollowOptions = (groups: FollowGroup[]) => {
+    const sig = JSON.stringify(groups.map((g) => [g.theater, g.choices.map((c) => [c.id, c.present])]));
+    if (sig === followSig) return;
+    followSig = sig;
+    followSel.replaceChildren(
+      h('option', { value: '' }, 'Selected fleet or engagement'),
+      ...groups.map((g) => h('optgroup', { label: g.label }, g.choices.map((c) => h('option', { value: c.id, disabled: !c.present }, c.name)))),
+    );
+  };
   const resetBtn = h('button', { class: 'ctx', type: 'button', onclick: () => d.onResetView() }, 'Reset view');
   const classIds = [...new Set([...replay.ships.map((ship) => ship.classId)])].filter((id) => d.tech.classes[id]);
   const classSel = h('select', { class: 'ctx-select', 'aria-label': 'Ship class', onchange: () => set({ selectedClass: classSel.value || null, fireStartedAt: null }) },
@@ -186,7 +208,7 @@ export function buildHud(d: HudDeps): Hud {
   const sailsBtn = h('button', { class: 'ctx', type: 'button', onclick: () => set({ shipSails: !store.get().shipSails, fireStartedAt: null }) }, 'Transit sails');
   const fireBtn = h('button', { class: 'ctx', type: 'button', onclick: () => set({ fireStartedAt: performance.now(), shipSails: false }) }, 'Fire / defense demo');
   const contextSystem = h('div', { class: 'ctx-row' }, presetButtons.map((p) => p.el));
-  const contextBattle = h('div', { class: 'ctx-row' }, followBtn, resetBtn);
+  const contextBattle = h('div', { class: 'ctx-row' }, followBtn, followSel, resetBtn);
   const contextShip = h('div', { class: 'ctx-row' }, classSel, rollBtn, podsBtn, sailsBtn, fireBtn);
   const context = h('div', { id: 'context' }, contextSystem, contextBattle, contextShip);
   // Bottom left, stacked so a longer caption or a second row of tools pushes the rest up instead of overlapping.
@@ -371,6 +393,12 @@ export function buildHud(d: HudDeps): Hud {
       case 'd': case 'D': if (d.shots.length) set({ camera: 'director', menu: 'none' }); break;
       case 'f': case 'F': set({ camera: 'free' }); break;
       case 'g': case 'G': if (s.scale !== 'ship') set({ follow: !s.follow, camera: 'free' }); break;
+      case 'n': case 'N': {
+        if (s.scale === 'ship') break;
+        const id = lastFrame ? cycleFollow(followGroups(pack, replay, lastFrame, knownSide(s)), s.theater, s.followUnit, e.shiftKey ? -1 : 1) : null;
+        if (id !== null) pickFollow(id);
+        break;
+      }
       case 'p': case 'P': setPerceived({ enabled: !s.perceived.enabled }); break;
       case '?': set({ menu: 'key' }); break;
     }
@@ -416,6 +444,7 @@ export function buildHud(d: HudDeps): Hud {
   return {
     root, canvas, labels, plotInsets, labelObstacles,
     render(s, live) {
+      lastFrame = live.frame;
       const t = live.frame.t;
       root.dataset.scale = s.scale;
       root.dataset.camera = s.camera;
@@ -466,7 +495,10 @@ export function buildHud(d: HudDeps): Hud {
         setText(shotName, shot.label);
         setText(shotDesc, shot.desc);
       } else {
-        setText(shotNo, s.follow && s.scale !== 'ship' ? 'Free camera · following' : 'Free camera');
+        const followed = s.follow && s.scale !== 'ship'
+          ? followLabel(replay, followSubjects(replay, d.shots, t, s.selectedShip, knownSide(s), s.followUnit, s.theater))
+          : null;
+        setText(shotNo, followed ? `Free camera · following ${followed}` : 'Free camera');
         setText(shotName, s.scale === 'system' ? 'System overview' : 'Engagement');
         setText(shotDesc, 'Drag to orbit, scroll to zoom, right-drag to pan. Click a ship to inspect it, double-click to follow it. Press Director to return to the shot list.');
       }
@@ -487,6 +519,11 @@ export function buildHud(d: HudDeps): Hud {
       contextShip.hidden = !ship;
       for (const p of presetButtons) toggleClass(p.el, 'active', s.systemFocus === p.id && s.camera === 'free');
       toggleClass(followBtn, 'active', s.follow && s.camera === 'free');
+      if (!contextBattle.hidden) {
+        renderFollowOptions(followGroups(pack, replay, live.frame, only));
+        const value = s.followUnit ?? '';
+        if (followSel.value !== value) followSel.value = value;
+      }
       if (classSel.value !== (s.selectedClass ?? '')) classSel.value = s.selectedClass ?? '';
       toggleClass(rollBtn, 'active', s.shipRoll);
       toggleClass(podsBtn, 'active', s.shipPods);
