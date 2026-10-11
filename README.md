@@ -5,9 +5,9 @@ Honorverse fleet-action reconstructions, plus a non-canon Training example. Ever
 The look and controls follow two earlier visualizers of the Battle of Manticore: the cinematic plot of [Site A](https://battle-of-manticore.muddy-glade-edee.workers.dev) and the System / Engagement / Ship detail structure of [Site B](https://battle-of-manticore.ra100x.chatgpt.site). `DESIGN.md` records how.
 
 - **System.** The star system as Site A draws it: the filmic star, the hyper-limit globe, orbits, the binary, the Junction and its resonance zone, with Site B's lit planets, fleet callouts and camera presets (Manticore-A, Manticore-B, Binary & junction, Outer orbits).
-- **Engagement.** Range rings centred on your side's fleet, the hyper-limit arc, fleets in their 3D formations with rings and velocity arrows, and every missile packet as streaks fired from the launching ships and landing on the target fleet, with laserheads, beams, defensive kills, ship losses and Apollo telemetry from the replay. Missile density runs from 1:1 to 1:16, and the readout says what is drawn.
+- **Engagement.** Range rings centred on your side's fleet or the force you follow, the hyper-limit arc, fleets and LAC wings in their 3D formations at one scale (every LAC a dot in its squadron of twelve) with rings and velocity arrows, and every missile packet as streaks fired from the launching ships and landing on the target fleet, with laserheads, beams, defensive kills, ship losses and Apollo telemetry from the replay. Missile density runs from 1:1 to 1:16, and the readout says what is drawn.
 - **Ship detail.** Each class hull at true scale inside Site B's wedge: double stress bands, sidewalls, Keyhole platforms, pods on tethers, transit sails and the fire / defense demo, with the class figures and their sources beside it.
-- **Director or free camera.** Each battle pack scripts its own shots, and the director adds captioned shots for every launch, flight, impact and close-range pass. Drag the plot to take the camera and press `D` to give it back. **Follow** (`G`), or a double-click on a ship, keeps your angle and distance while the view moves with that force.
+- **Director or free camera.** Each battle pack scripts its own shots, and the director adds captioned shots for every launch, flight, impact and close-range pass. Drag the plot to take the camera and press `D` to give it back. **Follow** (`G`) keeps your angle and distance while the view moves with a force: pick a fleet or LAC group in the Follow list, step through them with `N`, click a name in Forces, or double-click a ship.
 - **Actual or perceived.** Ground truth, or one commander's delayed sensor picture with contact ages and uncertainty rings.
 - **CIC console.** The battle clock and phase, tallies of missiles in space, stopped, detonated and ships lost, Forces with per-role strength bars, the CIC log, a ship inspector, a scale bar and an after-action debrief when the replay ends.
 - **Idle when paused.** A paused plot redraws only after input, a resize or a camera move; replay, demos and camera easing animate.
@@ -40,7 +40,7 @@ flowchart LR
   R --> U["src/ui: catalog, viewer HUD"]
 ```
 
-- `src/core` never touches the DOM or three.js and never calls `Math.random`; `tests/architecture.test.ts` enforces this. Given a pack, the solver produces the same replay every time. Scrubbing samples that replay at the exact requested time. Engagement keeps every fleet's formation in 3D, so orbiting turns it rather than reshaping it; zoomed out, the formation is drawn larger about its true centre (never past 180 px or toward the next fleet) so ships stay apart, captioned [S] in the readout. Each sampled missile leaves a ship of its fleet, flies its packet's solved path and comes down on a ship of the target fleet. None of this changes positions, counts, ranges, timing or picking identities.
+- `src/core` never touches the DOM or three.js and never calls `Math.random`; `tests/architecture.test.ts` enforces this. Given a pack, the solver produces the same replay every time. Scrubbing samples that replay at the exact requested time. Engagement keeps every fleet's formation in 3D, so orbiting turns it rather than reshaping it, and draws every formation and LAC wing four times life size about its true centre at every zoom (less only where that would run into another fleet), so sizes compare and zooming brings a force closer; the readout captions this [S]. Each sampled missile leaves a ship or LAC of its group, flies its packet's solved path and comes down on a ship of the target fleet. None of this changes positions, counts, ranges, timing or picking identities.
 - Ship and missile figures come from the project's technical reference, `docs/honorverse-master-technical-specification.md` (cited in code as `MTS §n`).
 - The catalog loads without the plot renderer. Entering a battle loads the viewer, then computes the replay in a worker. Leaving the route cancels solving and disposes its controls, observers and rendering schedule; stale load or solve results cannot mount.
 - Director + Auto uses event-focused cinematic pacing. Manual speeds and Free + Auto keep their existing behavior.
@@ -56,7 +56,8 @@ flowchart LR
 | `[` `]` | Previous or next phase |
 | `+` `−` | Faster or slower |
 | `1` `2` `3` | System, Engagement, Ship detail |
-| `D` / `F` / `G` | Director / free camera / Follow |
+| `D` / `F` / `G` | Director / free camera / Follow on or off |
+| `N` (with `Shift`) | Follow the next (previous) fleet or LAC group |
 | `P` | Actual or perceived picture |
 | `?` / `Esc` | Key / close menus and the debrief |
 
