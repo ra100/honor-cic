@@ -198,13 +198,16 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     if (s.scale === 'ship') return;
     const r = hud.canvas.getBoundingClientRect();
     const hit = views.get(s.scale)?.pick(((e.clientX - r.left) / r.width) * 2 - 1, -(((e.clientY - r.top) / r.height) * 2 - 1));
-    if (hit !== null && hit !== undefined) store.set({ selectedShip: hit, selectedClass: null, camera: 'free', follow: true, menu: 'none' });
+    if (hit !== null && hit !== undefined) {
+      store.set({ selectedShip: hit, selectedClass: null, camera: 'free', follow: true, followUnit: replay.units[replay.ships[hit].unit]?.id ?? null, menu: 'none' });
+    }
   };
   hud.canvas.addEventListener('pointerdown', onPointerDown);
   hud.canvas.addEventListener('pointerup', onPointerUp);
   hud.canvas.addEventListener('dblclick', onDoubleClick);
 
   let prevT = store.get().t;
+  let prevFollowUnit = store.get().followUnit;
   let shownScale: ScaleId | null = null;
   let prevShot: { id: string; scale: string } | null = null;
   let live: Live = { frame, samplingText: null, scaleNote: '', notice: plotFailure };
@@ -224,6 +227,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     }
 
     let directorMoving = false;
+    let followed: number | null = null;
     if (s.camera === 'director' && shots.length) {
       const shot = shotAt(shots, s.t)!;
       if (shot.scale !== s.scale || shot.theater !== s.theater) {
@@ -247,11 +251,16 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
     } else {
       prevShot = null;
       if (s.follow && s.scale !== 'ship') {
-        const c = subjectCentroid(replay, frame, followSubjects(replay, shots, s.t, s.selectedShip, knownSide(s)));
+        const ids = followSubjects(replay, shots, s.t, s.selectedShip, knownSide(s), s.followUnit, s.theater);
+        const c = subjectCentroid(replay, frame, ids);
         if (c) views.get(s.scale)?.followTarget(c);
+        if (ids.length === 1) followed = replay.units.findIndex((u) => u.id === ids[0]);
+        // A newly picked unit is brought into view if it is off the plot or too small to read.
+        if (s.followUnit !== prevFollowUnit && followed !== null && followed >= 0 && ids[0] === s.followUnit) views.get(s.scale)?.frameUnit?.(followed);
       }
     }
     prevT = s.t;
+    prevFollowUnit = s.followUnit;
 
     hud.render(s, { ...live, frame, rate, notice: actionFailure ?? live.notice });
     const plotInsets = hud.plotInsets();
@@ -267,7 +276,7 @@ function startViewer(root: HTMLElement, pack: ScenarioPack, replay: Replay): () 
       const obstacles = hud.labelObstacles();
       const ctx: ViewContext = {
         replay, pack, tech: TECH, frame, layers: s.layers, perceived: s.perceived, density: s.density, theater: s.theater,
-        selectedShip: s.selectedShip, selectedClass: s.selectedClass, reducedMotion: s.reducedMotion,
+        selectedShip: s.selectedShip, followUnit: followed, selectedClass: s.selectedClass, reducedMotion: s.reducedMotion,
         plotInsets,
         obstacles,
         focusSide: s.perceived.enabled ? s.perceived.side : pack.meta.sides[0].id,

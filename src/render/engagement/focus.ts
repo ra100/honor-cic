@@ -99,16 +99,21 @@ const unitAt = (frame: Frame, i: number): Vec3 => [frame.unitPos[i * 3], frame.u
 const distTo = (a: Vec3, b: Vec3): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 /**
- * "My fleet": the selected ship's fleet when it is on my side, else my side's fleet nearest the look point. Fleets with
+ * "My fleet": the unit the free camera follows when it is mine (a LAC group too), else the selected ship's fleet when it
+ * is on my side, else my side's fleet nearest the look point. Fleets with
  * ships left come first, then my LAC groups, then my fleets that are still on the plot but have lost every ship, so the
  * rings stay on my side after a wall of battle is destroyed. The look point follows the camera, so the rings move to
  * whichever of my fleets the shot or the user is watching.
  */
-export function ringCentreUnit(replay: Replay, frame: Frame, theater: string, side: string, look: Vec3, selectedShip: number | null): number | null {
+export function ringCentreUnit(
+  replay: Replay, frame: Frame, theater: string, side: string, look: Vec3, selectedShip: number | null, followed: number | null = null,
+): number | null {
   const mine = (i: number): boolean => {
     const u = replay.units[i];
     return !!u && u.side === side && u.theater === theater && u.kind === 'fleet' && frame.unitCount[i] > 0;
   };
+  const f = followed === null ? undefined : replay.units[followed];
+  if (f && f.side === side && f.theater === theater && frame.unitCount[followed!] > 0) return followed;
   if (selectedShip !== null) {
     const unit = replay.ships[selectedShip]?.unit;
     if (unit !== undefined && mine(unit)) return unit;

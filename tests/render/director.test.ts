@@ -59,6 +59,15 @@ describe('director', () => {
     expect(c[0]).toBeCloseTo(directorPose(shots[0], replay, f, true).target[0], 3);
   });
 
+  it('follows the picked unit first, unless the perceived picture hides it or it is in another theater', () => {
+    const red = replay.ships.findIndex((x) => x.side === 'haven');
+    const theater = replay.units.find((u) => u.id === 'tf-red')!.theater;
+    expect(followSubjects(replay, shots, 100, null, null, 'tf-red', theater)).toEqual(['tf-red']);
+    expect(followSubjects(replay, shots, 100, red, null, 'tf-blue', theater)).toEqual(['tf-blue']);
+    expect(followSubjects(replay, shots, 100, null, 'alliance', 'tf-red', theater)).toEqual(['tf-blue']);
+    expect(followSubjects(replay, shots, 100, null, null, 'tf-red', 'elsewhere')).toEqual(shotAt(shots, 100)!.subject);
+  });
+
   it('eases toward a pose, and snaps on a cut', () => {
     const rig = new CameraRig();
     rig.follow({ shotId: 'a', scale: 'engagement', theater: 'x', eye: [0, 0, 0], target: [0, 0, 0] }, 0.016, true);

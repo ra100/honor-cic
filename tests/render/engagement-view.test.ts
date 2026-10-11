@@ -286,6 +286,28 @@ describe('EngagementView in 3D: formations and launches (Manticore)', () => {
     }
   });
 
+  it('frames a unit picked to follow when it is off the plot or too small to read, and leaves a framed one alone', () => {
+    const v = new EngagementView(pack, replay, null);
+    const c = ctx(replay, 1860);
+    const lacs = unit('hf-lacs');
+    const centre = centreOf(c, lacs);
+    const look = () => v.camera.position.length();
+    orbitPose(v, centre, 210, 25, 150e6);
+    v.update(c);
+    v.frameUnit(lacs);
+    v.update(c);
+    expect(look()).toBeLessThan(20e6);
+    const at = v.toRender(centre).project(v.camera);
+    expect(Math.abs(at.x)).toBeLessThan(0.5);
+    expect(Math.abs(at.y)).toBeLessThan(0.5);
+    orbitPose(v, centre, 210, 25, 4e6);
+    v.update(c);
+    const before = v.camera.position.clone();
+    v.frameUnit(lacs);
+    v.update(c);
+    expect(v.camera.position.distanceTo(before)).toBeLessThan(1);
+  });
+
   it('fires each missile from a ship of the launching fleet and brings it down on a ship of the target fleet', () => {
     const hfIdx = unit('home-fleet'), sfIdx = unit('second-fleet');
     const packet = replay.packets.find((p) => p.fromUnit === hfIdx && p.toUnit === sfIdx && p.tLaunch > 0)!;

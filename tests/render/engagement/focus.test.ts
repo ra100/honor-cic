@@ -93,6 +93,14 @@ describe('which fleet is mine', () => {
     expect(replay.units[ringCentreUnit(replay, f, 'sphinx', 'haven', unitAt(f, eighth), null)!].side).toBe('haven');
   });
 
+  it('centres on the followed unit of my side, a LAC group included, never on a followed enemy', () => {
+    const f = frame(1860);
+    const lacs = replay.units.findIndex((u) => u.id === 'hf-lacs');
+    const sf = replay.units.findIndex((u) => u.id === 'second-fleet');
+    expect(id(ringCentreUnit(replay, f, 'sphinx', 'alliance', unitAt(f, sf), null, lacs))).toBe('hf-lacs');
+    expect(replay.units[ringCentreUnit(replay, f, 'sphinx', 'alliance', unitAt(f, sf), null, sf)!].side).toBe('alliance');
+  });
+
   it('stays on my side after my wall of battle is gone', () => {
     const f = frame(1000);
     const hf = replay.units.findIndex((u) => u.id === 'home-fleet');

@@ -46,7 +46,7 @@ export class ForcesPanel {
         h('div', { class: 'fleet-h' },
           h('button', {
             class: 'fleet-n', type: 'button', title: `Follow ${u.name}`,
-            onclick: () => this.store.set({ selectedShip: u.firstShip, selectedClass: null, theater: u.theater, camera: 'free', follow: true }),
+            onclick: () => this.store.set({ selectedShip: u.firstShip, selectedClass: null, theater: u.theater, camera: 'free', follow: true, followUnit: u.id }),
           }, u.name),
           u.limit ? h('span', { class: 'num note-star' }, u.limit) : null),
         u.commander ? h('div', { class: 'fleet-c' }, u.commander) : null,
@@ -159,7 +159,7 @@ export class InspectorPanel {
         m.equipment.length ? h('li', null, `Equipment: ${m.equipment.join(', ')}`) : null,
         h('li', { class: 'note' }, m.nameNote)),
       h('div', { class: 'ins-btns' },
-        h('button', { class: 'tb', type: 'button', onclick: () => this.store.set({ camera: 'free', follow: true, theater: unit?.theater ?? this.store.get().theater }) }, 'Follow'),
+        h('button', { class: 'tb', type: 'button', onclick: () => this.store.set({ camera: 'free', follow: true, followUnit: unit?.id ?? null, theater: unit?.theater ?? this.store.get().theater }) }, 'Follow'),
         h('button', { class: 'tb', type: 'button', onclick: () => this.store.set({ ...scaleSelection('ship'), selectedClass: null }) }, 'Ship detail')),
     );
   }
