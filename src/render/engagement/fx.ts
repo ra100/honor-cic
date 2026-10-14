@@ -148,7 +148,9 @@ varying float vPulse;
 #include <logdepthbuf_pars_fragment>
 void main() {
   #include <logdepthbuf_fragment>
-  float a = 1.0 - vQ.y * vQ.y;
+  // Multisampling shades a thin beam's edge pixels at their centres, past the ribbon, where |y| > 1: unclamped, the
+  // falloff went negative and pow() overflowed, so a one-pixel telemetry link drew as a blown-out white bar.
+  float a = max(0.0, 1.0 - vQ.y * vQ.y);
   float I = vCol.a;
   if (vPulse > 0.0) {
     // Apollo telemetry (A report §4.8): brighter toward the missile, with pulses travelling outward.
@@ -159,7 +161,11 @@ void main() {
   gl_FragColor = vec4((vCol.rgb * a * a + vec3(pow(a, 8.0)) * 0.5) * I, 1.0);
 }`;
 
-/** Additive screen-space beams between two points (A report §4.8 lasing rods, grasers, telemetry), rebuilt each frame. */
+/**
+ * Screen-space beams between two points (A report §4.8 lasing rods, grasers, telemetry), rebuilt each frame.
+ * Beams add up unless `blend` is `max`, which keeps the brightest beam per pixel: Apollo telemetry fans dozens of links
+ * out of one flagship, and seen from afar they share pixels, so summed they would whiten into one bar.
+ */
 export class BeamBatch {
   readonly mesh: THREE.Mesh;
   private readonly geometry = new THREE.InstancedBufferGeometry();
@@ -170,7 +176,7 @@ export class BeamBatch {
   private readonly w: Float32Array;
   private n = 0;
 
-  constructor(readonly capacity: number, renderOrder = 5) {
+  constructor(readonly capacity: number, renderOrder = 5, blend: 'add' | 'max' = 'add') {
     this.a = new Float32Array(capacity * 3);
     this.b = new Float32Array(capacity * 3);
     this.col = new Float32Array(capacity * 4);
@@ -185,7 +191,10 @@ export class BeamBatch {
     this.material = new THREE.ShaderMaterial({
       vertexShader: BEAM_VERT, fragmentShader: BEAM_FRAG,
       uniforms: { uViewport: { value: new THREE.Vector2(1, 1) }, uNear: { value: 0.05 }, uTime: { value: 0 } },
-      transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending,
+      transparent: true, depthWrite: false, depthTest: true,
+      ...(blend === 'max'
+        ? { blending: THREE.CustomBlending, blendEquation: THREE.MaxEquation, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor }
+        : { blending: THREE.AdditiveBlending }),
     });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
     this.mesh.frustumCulled = false;

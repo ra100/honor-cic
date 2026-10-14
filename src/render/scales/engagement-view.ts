@@ -165,7 +165,7 @@ export class EngagementView implements ScaleView {
   private readonly streaks: StreakLayer;
   private readonly glows = new GlowBatch(FX_CAP, 6);
   private readonly beamBatch = new BeamBatch(FX_CAP, 5);
-  private readonly links = new BeamBatch(LINK_CAP, 2);
+  private readonly links = new BeamBatch(LINK_CAP, 2, 'max');
   private readonly cache = new DotCache();
   private readonly beams: BeamEvent[];
   private readonly maxBeamDur: number;
