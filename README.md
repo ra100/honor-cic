@@ -1,4 +1,30 @@
-# honor-cic
+<h1 align="center">honor-cic</h1>
+
+<p align="center"><b>Replay the Honorverse's great fleet actions from the combat information centre.</b><br>
+Hundreds of thousands of missiles, thousands of LACs and every wall of battle, on a 3D tactical plot where each number carries its evidence label.</p>
+
+<p align="center">
+  <a href="https://honor-cic.pages.dev"><b>▶ Launch the viewer</b></a> ·
+  <a href="https://honor-cic.pages.dev/#/battle/manticore">Battle of Manticore</a> ·
+  <a href="https://ra100.github.io/honor-cic/">GitHub Pages mirror</a>
+</p>
+
+<p align="center">
+  <a href="https://honor-cic.pages.dev/#/battle/manticore"><img src="docs/showcase/salvo.jpg" alt="Engagement view at T+5:00: 674,000 missiles in flight as Home Fleet and Second Fleet trade salvos across the range rings" width="100%"></a>
+</p>
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/showcase/system.jpg" alt="System view: Manticore-A inside its hyper-limit globe, the planets, the Junction's resonance zone and the fleets' positions"></td>
+    <td width="33%"><img src="docs/showcase/lac-strike.jpg" alt="Engagement view at T+31:00: Alliance and Haven LAC wings, every LAC a dot, colliding around Second Fleet"></td>
+    <td width="33%"><img src="docs/showcase/ship-detail.jpg" alt="Ship detail: an Invictus-class SD(P) at true scale inside its impeller wedge, with pod lanes, Keyhole platforms and class figures"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>System</b>: the binary, the hyper limit and the Junction</sub></td>
+    <td align="center"><sub><b>Engagement</b>: 2,300 LACs go through the screen</sub></td>
+    <td align="center"><sub><b>Ship detail</b>: an <i>Invictus</i> inside its wedge</sub></td>
+  </tr>
+</table>
 
 Honorverse fleet-action reconstructions, plus a non-canon Training example. Every number in the app carries its evidence label.
 
@@ -97,7 +123,16 @@ Pick side colours that stay readable as text on the near-black plot (`#020208`);
 
 ## Deploy
 
-Cloudflare Pages, project `honor-cic`:
+Every push to `main` publishes the site twice:
+
+| Where | Workflow |
+|---|---|
+| [honor-cic.pages.dev](https://honor-cic.pages.dev) | `.github/workflows/deploy.yml` (Cloudflare Pages) |
+| [ra100.github.io/honor-cic](https://ra100.github.io/honor-cic/) | `.github/workflows/pages.yml` (GitHub Pages) |
+
+The build uses relative asset paths and hash routes, so the same `dist/` works at a domain root and under `/honor-cic/`. GitHub Pages needs **Settings → Pages → Source: GitHub Actions** once. It ignores `public/_headers`, so the content security policy and immutable asset caching apply on Cloudflare only.
+
+Cloudflare Pages by hand, project `honor-cic`:
 
 ```bash
 npx wrangler login   # once per machine
