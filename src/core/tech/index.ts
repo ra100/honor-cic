@@ -10,7 +10,10 @@ export const TECH: TechRegistry = {
   missiles: MISSILES,
   podLoads: POD_LOADS,
   equipment: EQUIPMENT,
-  eras: { 'early-apollo-1921': { label: 'Early Apollo, 1921 PD', year_from: 1921, year_to: 1921 } },
+  eras: {
+    'pre-war-1900': { label: 'Pre-war single-drive missiles, about 1900 PD', year_from: 1895, year_to: 1905 },
+    'early-apollo-1921': { label: 'Early Apollo, 1921 PD', year_from: 1921, year_to: 1921 },
+  },
 };
 
 const isSV = (x: unknown): x is SV =>

@@ -10,10 +10,10 @@ export function shipGlyph(cls: ShipClass | undefined, role: Role, selected = fal
       : hull === 'CLAC' || role === 'carrier' ? SHAPE.carrier
         : hull === 'SD(P)' || hull === 'BC(P)' ? SHAPE.podWall
           : role === 'screen' ? SHAPE.screen : SHAPE.wall;
-  const size = hull === 'LAC' || role === 'lac' ? 4.5
+  const size = hull === 'LAC' || hull === 'CB' || role === 'lac' ? 4.5
     : hull === 'CLAC' || role === 'carrier' ? 10
       : hull === 'SD' || hull === 'SD(P)' ? 9
-        : hull === 'BC' || hull === 'BC(P)' ? 7.5
+        : hull === 'BC' || hull === 'BC(P)' || hull === 'Q' ? 7.5
           : hull === 'CA' ? 6.5 : 5.5;
   return { shape, size: Math.min(14, size + (selected ? 3 : 0)) };
 }

@@ -25,6 +25,25 @@ describe('burn schedule (MTS §8.2)', () => {
   });
 });
 
+describe('single-drive missiles of 1900 PD (On Basilisk Station ch. 29)', () => {
+  const rmn = burnPlanOf(TECH.missiles['rmn-1900']!);
+  it('burns three minutes at 417 km/s² and then goes ballistic', () => {
+    const burnout = burnDisplacement(rmn, 180);
+    expect(burnout.v).toBeCloseTo(gToKmS2(42_500) * 180, 6);
+    expect(burnDisplacement(rmn, 200).s).toBeCloseTo(burnout.s + 20 * burnout.v, 3);
+  });
+  it('reproduces the warning shot: 192.8 s to a target pulling away at 410 g, 25.62 light-seconds off', () => {
+    const a = gToKmS2(410);
+    const v0 = 188;
+    const r0 = 25.62 * C_KM_S;
+    const plan = planIntercept({ plan: rmn, tLaunch: 0, launchP: [0, 0, 0], launchV: [0, 0, 0], target: (t) => [r0 - v0 * t + 0.5 * a * t * t, 0, 0] });
+    expect(plan.feasible).toBe(true);
+    expect(plan.T).toBeGreaterThan(191.5);
+    expect(plan.T).toBeLessThan(194);
+    expect(plan.phases.map((p) => p.phase)).toEqual([DrivePhase.Boost, DrivePhase.Coast]);
+  });
+});
+
 describe('planIntercept', () => {
   it('reaches a stationary target 30 Mkm away in about 369.5 s', () => {
     const plan = planIntercept({ plan: mk16, tLaunch: 0, launchP: [0, 0, 0], launchV: [0, 0, 0], target: still([30e6, 0, 0]) });

@@ -6,6 +6,7 @@ Hundreds of thousands of missiles, thousands of LACs and every wall of battle, o
 <p align="center">
   <a href="https://honor-cic.pages.dev"><b>▶ Launch the viewer</b></a> ·
   <a href="https://honor-cic.pages.dev/#/battle/manticore">Battle of Manticore</a> ·
+  <a href="https://honor-cic.pages.dev/#/battle/basilisk">First Battle of Basilisk</a> ·
   <a href="https://ra100.github.io/honor-cic/">GitHub Pages mirror</a>
 </p>
 

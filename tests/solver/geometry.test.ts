@@ -30,6 +30,16 @@ describe('classifyAspect (MTS §3.1, §4.6)', () => {
     const half = orientationAt([1, 0, 0], [0, 0, 1], [{ t0: 0, t1: 10, angleRad: Math.PI / 2 }], 5);
     expect(half.u[2]).toBeCloseTo(Math.SQRT1_2, 6);
   });
+  it('turns the bow about the dorsal axis and applies turns in time order', () => {
+    const turned = orientationAt([0, -1, 0], [0, 0, 1], [{ t0: 0, t1: 10, angleRad: Math.PI / 2, axis: 'up' }], 20);
+    expect(turned.f[1]).toBeCloseTo(1, 6);
+    const thenRolled = orientationAt([0, -1, 0], [0, 0, 1], [
+      { t0: 0, t1: 10, angleRad: -Math.PI / 2, axis: 'up' },
+      { t0: 20, t1: 30, angleRad: Math.PI, axis: 'bow' },
+    ], 40);
+    expect(thenRolled.f[1]).toBeCloseTo(-1, 6);
+    expect(thenRolled.s[0]).toBeCloseTo(1, 6);
+  });
   it('weakens attacks through end walls without making them immune', () => {
     expect(endwallFactor('none')).toBe(1);
     expect(endwallFactor('full')).toBeGreaterThan(0);

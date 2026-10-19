@@ -6,12 +6,15 @@ import { getPack, listScenarios, rawPacks } from '../src/registry';
 import { ShipStatus } from '../src/core/replay';
 import { solve } from '../src/core/solver/solve';
 import { validateReplay } from '../src/core/validate';
+import { unitPosition, unitVelocity } from '../src/core/replay';
+import { LS_KM } from '../src/core/units';
+import { dist, len, sub } from '../src/core/vec';
 
 describe('scenario packs', () => {
   const packs = rawPacks();
 
-  it('finds the Manticore and training packs', () => {
-    expect(Object.keys(packs).sort()).toEqual(['manticore', 'training']);
+  it('finds the Basilisk, Manticore and training packs', () => {
+    expect(Object.keys(packs).sort()).toEqual(['basilisk', 'manticore', 'training']);
   });
 
   for (const [id, raw] of Object.entries(packs)) {
@@ -143,5 +146,27 @@ describe('beam attack ranges (MTS §12.2 check 9)', () => {
     const pack = getPack('manticore')!;
     const issues = validateReplay(pack, TECH, solve(pack, TECH)).filter((i) => i.check === 'geometry' && i.message.includes('stated range'));
     expect(formatIssues(issues)).toBe('');
+  }, 60_000);
+
+  it('Basilisk: the chase reproduces the novel\'s ranges, flight times and closing speed', () => {
+    const pack = getPack('basilisk')!;
+    const r = solve(pack, TECH);
+    const unit = (id: string) => r.units.find((u) => u.id === id)!;
+    const range = (t: number) => dist(unitPosition(unit('fearless'), t), unitPosition(unit('sirius'), t));
+    const at = (id: string) => r.resolvedTimes[id];
+    expect(range(at('fp-warning')) / LS_KM).toBeCloseTo(25.62, 2);
+    expect(len(unitVelocity(unit('fearless'), at('fp-warning')))).toBeGreaterThan(18_000);
+    expect(range(at('fp-sirius-first')) / 1e6).toBeCloseTo(7.6, 1);
+    const flight = (plan: string) => r.packets.filter((p) => p.planId === plan).map((p) => p.tArrive - p.tLaunch)[0];
+    expect(flight('fp-warning')).toBeCloseTo(192.8, 0);
+    expect(Math.abs(flight('fp-sirius-first') - 188)).toBeLessThan(1.5);
+    const tClose = at('rng-lance-approach');
+    expect(len(sub(unitVelocity(unit('fearless'), tClose), unitVelocity(unit('sirius'), tClose)))).toBeCloseTo(3392, -2);
+    expect(range(at('ba-lance'))).toBeLessThan(100_000);
+    const final = (unitId: string) => { const s = r.ships[unit(unitId).shipIdx[0]]; return s.status[s.status.length - 1].status; };
+    expect(final('sirius')).toBe(ShipStatus.Destroyed);
+    expect(final('fearless')).toBe(ShipStatus.MissionKill);
+    const early = r.log.filter((l) => l.kind === 'arrival' && /HMS Fearless/.test(l.text) && l.t < at('man-fearless-half') - 10);
+    expect(early.every((l) => /hits 0$/.test(l.text))).toBe(true);
   }, 60_000);
 });

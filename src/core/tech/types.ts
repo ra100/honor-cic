@@ -3,9 +3,11 @@ import type { EvidenceLabel, SourceValue } from '../evidence';
 export type SV = SourceValue<number>;
 export type MountKey = 'missile' | 'graser' | 'laser' | 'energy_torpedo' | 'cm' | 'pd' | 'pod_lanes';
 export type Mounts = Record<MountKey, SV>;
-export type Hull = 'SD' | 'SD(P)' | 'BC' | 'BC(P)' | 'CA' | 'CL' | 'CLAC' | 'LAC';
+/** Q is an armed merchantman (Q-ship); CB a courier boat. */
+export type Hull = 'SD' | 'SD(P)' | 'BC' | 'BC(P)' | 'CA' | 'CL' | 'CLAC' | 'LAC' | 'Q' | 'CB';
 export type Role = 'wall' | 'screen' | 'carrier' | 'lac';
-export type Navy = 'RMN' | 'GSN' | 'IAN' | 'RHN';
+/** PN is the People's Navy of the People's Republic of Haven, before the 1920s restoration of the RHN. */
+export type Navy = 'RMN' | 'GSN' | 'IAN' | 'RHN' | 'PN';
 
 export interface ShipClass {
   id: string;
@@ -53,6 +55,11 @@ export interface MissileProfile {
   mass: SV;
   stages: MissileStage[];
   max_coast: SV;
+  /**
+   * When the ballistic interval comes. Multi-drive missiles coast between drives and keep the last one for the attack
+   * run; a single-drive missile of the 1900s burns out and goes ballistic for the rest of its flight.
+   */
+  coast: 'before-last-stage' | 'after-burnout';
   standoff: SV;
   beams: SV;
   hit_fraction: SV;

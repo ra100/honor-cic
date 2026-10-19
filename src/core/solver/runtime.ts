@@ -57,7 +57,7 @@ export interface ShipRuntime {
 export interface BeamEvent {
   t: number;
   dur: number;
-  kind: 'laserhead' | 'graser' | 'laser' | 'cm-kill' | 'pd-kill' | 'transit';
+  kind: 'laserhead' | 'graser' | 'laser' | 'lance' | 'torpedo' | 'cm-kill' | 'pd-kill' | 'transit';
   from: Vec3;
   to: Vec3;
   side: string;

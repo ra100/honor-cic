@@ -1,0 +1,116 @@
+{
+  "bodies": [
+    {
+      "id": "basilisk-a",
+      "name": "Basilisk-A",
+      "kind": "star",
+      "parent_id": null,
+      "radius": {
+        "value": 626000,
+        "unit": "km",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "G5 dwarf, about 0.9 solar radii assumed"
+      },
+      "mass": {
+        "value": 0.9,
+        "unit": "Msun",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "typical G5 main-sequence mass assumed; the wiki gives only the spectral class (W)"
+      },
+      "orbit": null,
+      "offset": null,
+      "hyper_limit": {
+        "value": 19.8,
+        "unit": "LM",
+        "evidence": "W",
+        "source_id": "wiki-hv",
+        "locator": "Hyper limit, table by spectral class: G5",
+        "uncertainty": "On Basilisk Station rounds the G5 limit to twenty light-minutes"
+      },
+      "exclusion": null,
+      "note": "G5 primary (W, Basilisk System)."
+    },
+    {
+      "id": "medusa",
+      "name": "Medusa",
+      "kind": "planet",
+      "parent_id": "basilisk-a",
+      "radius": {
+        "value": 6300,
+        "unit": "km",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "Earth-like world assumed; radius not established"
+      },
+      "orbit": {
+        "radius": {
+          "value": 7.8,
+          "unit": "LM",
+          "evidence": "S",
+          "source_id": "honor-cic",
+          "uncertainty": "the wiki says about seven light-minutes; 7.8 LM is the orbit for which Sirius's 173-minute run at 410 g reaches the 19.8 LM limit and the limit lies twelve light-minutes from Medusa (On Basilisk Station ch. 27)"
+        },
+        "phase": {
+          "value": 0,
+          "unit": "deg",
+          "evidence": "S",
+          "source_id": "honor-cic",
+          "uncertainty": "the frame puts Medusa on +X when Sirius breaks orbit"
+        },
+        "period": {
+          "value": 0.958,
+          "unit": "yr",
+          "evidence": "D",
+          "source_id": "honor-cic",
+          "uncertainty": "Kepler: 7.8 LM (0.938 AU) around 0.9 solar masses"
+        },
+        "inclination": {
+          "value": 0,
+          "unit": "deg",
+          "evidence": "S",
+          "source_id": "honor-cic",
+          "uncertainty": "coplanar assumed"
+        }
+      },
+      "offset": null,
+      "hyper_limit": null,
+      "exclusion": null,
+      "note": "Single habitable planet, a Manticoran protectorate (W). Orbital speed about 29 km/s (D)."
+    },
+    {
+      "id": "basilisk-terminus",
+      "name": "Basilisk Terminus",
+      "kind": "terminus",
+      "parent_id": "basilisk-a",
+      "radius": {
+        "value": 149896,
+        "unit": "km",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "drawn like the Junction's one light-second sphere"
+      },
+      "orbit": null,
+      "offset": {
+        "value": [
+          -424.26,
+          -424.26,
+          0
+        ],
+        "unit": "LM"
+      },
+      "offset_evidence": "S",
+      "hyper_limit": null,
+      "exclusion": {
+        "value": 1000000,
+        "unit": "km",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 5, via MTS \u00a72.6",
+        "uncertainty": "a terminus's local limit is described as less than one million km; used as an upper bound"
+      },
+      "note": "About 600 light-minutes from the primary (W, Basilisk Terminus); the direction is not established and is drawn away from the chase. The Junction route the Case Zulu signal summoned Home Fleet through."
+    }
+  ]
+}
