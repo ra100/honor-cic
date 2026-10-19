@@ -159,6 +159,8 @@ export const ManeuverZ = z.object({
 }).strict();
 export const RollZ = z.object({
   type: z.literal('roll'), ...evBase, unit: z.string(), angle_deg: z.number(), duration_s: z.number().positive(),
+  /** bow: roll about the bow axis; up: turn the bow about the dorsal axis (positive to port). */
+  axis: z.enum(['bow', 'up']).default('bow'),
 }).strict();
 export const FirePlanZ = z.object({
   type: z.literal('fire_plan'), ...evBase,
@@ -175,7 +177,7 @@ export const FirePlanZ = z.object({
 export const BeamAttackZ = z.object({
   type: z.literal('beam_attack'), ...evBase,
   engagement: z.string(), from: z.string(), to: z.string(), until: TimeRefZ,
-  weapon: z.enum(['graser', 'laser', 'lac-mixed']), shots: z.number().int().positive(), range: SVNumZ,
+  weapon: z.enum(['graser', 'laser', 'lac-mixed', 'grav-lance', 'energy-torpedo']), shots: z.number().int().positive(), range: SVNumZ,
 }).strict();
 export const OutcomeZ = z.object({
   type: z.literal('outcome'), ...evBase,

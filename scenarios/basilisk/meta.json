@@ -1,0 +1,320 @@
+{
+  "id": "basilisk",
+  "title": "First Battle of Basilisk",
+  "alt_titles": [
+    "Fearless and Sirius",
+    "Operation Odysseus (the Havenite plan)"
+  ],
+  "date": {
+    "value": "1901-09-03",
+    "unit": "PD-date",
+    "evidence": "W",
+    "source_id": "wiki-hv",
+    "locator": "First Battle of Basilisk, infobox",
+    "uncertainty": "the supplied extract says 2 October 1900 PD; the wiki infobox and timeline give 3 September 1901 PD"
+  },
+  "year_pd": 1901,
+  "era": "pre-war-1900",
+  "location": "Basilisk system, between Medusa and the hyper limit",
+  "summary": "HMS Fearless, a light cruiser rebuilt around an experimental grav lance, runs down the Havenite Q-ship Sirius before she can reach the hyper limit and summon a waiting task force. Crippled by laserheads, Fearless plays dead, lets Sirius close and destroys her with the lance and energy torpedoes.",
+  "stub": false,
+  "sides": [
+    {
+      "id": "manticore",
+      "name": "Star Kingdom of Manticore",
+      "color": "#00ff66"
+    },
+    {
+      "id": "haven",
+      "name": "People's Republic of Haven",
+      "color": "#ff0033"
+    }
+  ],
+  "frame": {
+    "origin_body": "basilisk-a",
+    "axes": "Origin at Basilisk-A. +X outward through Medusa at the moment Sirius breaks orbit, which is also Sirius's course to the hyper limit; +Y along Medusa's orbital motion; +Z normal to the orbital plane. A plotting convention, not an astronomical orientation.",
+    "evidence": "S"
+  },
+  "duration_s": 9062,
+  "motion_model": "narrative-calibrated",
+  "ftl_speed_c": {
+    "value": 64,
+    "unit": "ratio",
+    "evidence": "S",
+    "source_id": "mts",
+    "locator": "\u00a77.2",
+    "uncertainty": "declared provisional grav-pulse preset (MTS Appendix A); no FTL traffic in this battle"
+  },
+  "phases": [
+    {
+      "id": "breakout",
+      "label": "Sirius breaks orbit",
+      "t0": 0
+    },
+    {
+      "id": "pursuit",
+      "label": "Fearless gives chase",
+      "t0": {
+        "ref": "man-fearless-chase",
+        "anchor": "t",
+        "offset_s": 0
+      }
+    },
+    {
+      "id": "warning",
+      "label": "Warning shot",
+      "t0": {
+        "ref": "sig-heave-to",
+        "anchor": "t",
+        "offset_s": 0
+      }
+    },
+    {
+      "id": "exchange",
+      "label": "Sirius opens fire",
+      "t0": {
+        "ref": "fp-sirius-first",
+        "anchor": "launch",
+        "offset_s": 0
+      }
+    },
+    {
+      "id": "crippled",
+      "label": "Fearless hit",
+      "t0": {
+        "ref": "man-fearless-half",
+        "anchor": "t",
+        "offset_s": -20
+      }
+    },
+    {
+      "id": "turn",
+      "label": "Coglin turns to kill",
+      "t0": {
+        "ref": "turn-sirius",
+        "anchor": "t",
+        "offset_s": 0
+      }
+    },
+    {
+      "id": "trap",
+      "label": "The grav lance trap",
+      "t0": {
+        "ref": "rng-lance-approach",
+        "anchor": "t",
+        "offset_s": -60
+      }
+    },
+    {
+      "id": "aftermath",
+      "label": "Aftermath",
+      "t0": {
+        "ref": "out-sirius",
+        "anchor": "t",
+        "offset_s": 5
+      }
+    }
+  ],
+  "theaters": [
+    {
+      "id": "basilisk",
+      "label": "Basilisk inner system",
+      "anchor_body": "medusa"
+    }
+  ],
+  "shots": [
+    {
+      "id": "system",
+      "label": "Basilisk",
+      "desc": "Basilisk-A, Medusa and the 19.8 LM hyper limit. Sirius needs just under 173 minutes at 410 g to reach it.",
+      "t0": 0,
+      "theater": "basilisk",
+      "scale": "system",
+      "subject": [
+        "basilisk-a"
+      ],
+      "distance_km": 1200000000.0,
+      "elev_deg": 35,
+      "azim_deg": -60,
+      "orbit_deg_per_min": 2
+    },
+    {
+      "id": "breakout",
+      "label": "Sirius runs",
+      "desc": "Sirius leaves Medusa orbit at 410 g, impossibly fast for a freighter.",
+      "t0": 30,
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "sirius",
+        "fearless"
+      ],
+      "distance_km": 3000000.0,
+      "elev_deg": 25,
+      "azim_deg": -35,
+      "orbit_deg_per_min": 4
+    },
+    {
+      "id": "chase",
+      "label": "Stern chase",
+      "desc": "Fearless follows 15 minutes behind at 520 g; her 110 g edge must overtake Sirius before the hyper limit.",
+      "t0": {
+        "ref": "man-fearless-chase",
+        "anchor": "t",
+        "offset_s": 60
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "fearless",
+        "sirius"
+      ],
+      "distance_km": 12000000.0,
+      "elev_deg": 30,
+      "azim_deg": -80,
+      "orbit_deg_per_min": 3
+    },
+    {
+      "id": "warning",
+      "label": "Warning shot",
+      "desc": "At 25.62 light-seconds Fearless fires a warning missile set to burst 5,000 km clear of Sirius.",
+      "t0": {
+        "ref": "fp-warning",
+        "anchor": "launch",
+        "offset_s": -10
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "fearless",
+        "sirius"
+      ],
+      "distance_km": 11000000.0,
+      "elev_deg": 20,
+      "azim_deg": -100,
+      "orbit_deg_per_min": 4
+    },
+    {
+      "id": "first-salvo",
+      "label": "Sirius opens fire",
+      "desc": "Sirius fires from her after tubes at a 188-second flight time.",
+      "t0": {
+        "ref": "fp-sirius-first",
+        "anchor": "launch",
+        "offset_s": -10
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "sirius",
+        "fearless"
+      ],
+      "distance_km": 11000000.0,
+      "elev_deg": 25,
+      "azim_deg": -120,
+      "orbit_deg_per_min": 4
+    },
+    {
+      "id": "hit",
+      "label": "Fearless hit",
+      "desc": "A laserhead wrecks Fearless's forward impellers and she drops to half power.",
+      "t0": {
+        "ref": "fp-sirius-volley",
+        "anchor": "arrival",
+        "offset_s": -15
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "fearless"
+      ],
+      "distance_km": 1500000.0,
+      "elev_deg": 15,
+      "azim_deg": 150,
+      "orbit_deg_per_min": 6
+    },
+    {
+      "id": "trap",
+      "label": "Playing dead",
+      "desc": "Fearless drifts with her drive down. Sirius closes at 3,392 km/s to finish her.",
+      "t0": {
+        "ref": "rng-lance-approach",
+        "anchor": "t",
+        "offset_s": -40
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "fearless",
+        "sirius"
+      ],
+      "distance_km": 1400000.0,
+      "elev_deg": 30,
+      "azim_deg": 60,
+      "orbit_deg_per_min": 5
+    },
+    {
+      "id": "lance",
+      "label": "Grav lance",
+      "desc": "The lance collapses Sirius's sidewall and four energy torpedo launchers finish her.",
+      "t0": {
+        "ref": "ba-lance",
+        "anchor": "t",
+        "offset_s": -8
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "fearless",
+        "sirius"
+      ],
+      "distance_km": 350000.0,
+      "elev_deg": 25,
+      "azim_deg": 30,
+      "orbit_deg_per_min": 6
+    },
+    {
+      "id": "aftermath",
+      "label": "Aftermath",
+      "desc": "Sirius is gone with all hands. Fearless drifts outward, a wreck.",
+      "t0": {
+        "ref": "out-sirius",
+        "anchor": "t",
+        "offset_s": 10
+      },
+      "theater": "basilisk",
+      "scale": "engagement",
+      "subject": [
+        "fearless"
+      ],
+      "distance_km": 1200000.0,
+      "elev_deg": 30,
+      "azim_deg": 100,
+      "orbit_deg_per_min": 3
+    }
+  ],
+  "sources": [
+    {
+      "id": "obs",
+      "title": "David Weber, On Basilisk Station (Baen), chapters 27 to 32",
+      "url": "https://www.baen.com/chapters/basilisk_29.htm",
+      "kind": "P"
+    },
+    {
+      "id": "wiki-hv",
+      "title": "Honorverse wiki: First Battle of Basilisk, HMS Fearless (CL-56), Courageous class, PMSS Sirius, Basilisk System, Hyper limit",
+      "url": "https://honorverse.fandom.com/wiki/First_Battle_of_Basilisk",
+      "kind": "W"
+    },
+    {
+      "id": "mts",
+      "title": "Honorverse Master Technical Specification (project reference document)",
+      "kind": "W"
+    },
+    {
+      "id": "honor-cic",
+      "title": "honor-cic reconstruction (this project)",
+      "kind": "S"
+    }
+  ]
+}

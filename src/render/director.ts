@@ -63,7 +63,7 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
   const beamAttacks = pack.events.filter((e) => e.type === 'beam_attack');
   const beamIndices = (ids: string[], t0: number, t1: number) => replay.beams.flatMap((b, i) => {
     const target = replay.ships[b.ship];
-    return b.t >= t0 && b.t <= t1 && (b.kind === 'graser' || b.kind === 'laser' || b.kind === 'laserhead')
+    return b.t >= t0 && b.t <= t1 && (b.kind === 'graser' || b.kind === 'laser' || b.kind === 'lance' || b.kind === 'torpedo' || b.kind === 'laserhead')
       && ((target && ids.includes(replay.units[target.unit].id)) || ids.some((id) => {
         const unit = replay.units.find((u) => u.id === id && u.side === b.side);
         return !!unit && dist(unitPosition(unit, b.t), b.from) <= 20_000;
@@ -140,9 +140,10 @@ export function shotsFor(pack: ScenarioPack, replay: Replay): DirectorShot[] {
     if (!theater) continue;
     if (!shots.some((s) => s.focus?.eventId && Math.abs(s.t0 - (t0 - 3)) < 1)) {
       const lacs = event.weapon === 'lac-mixed';
+      const label = lacs ? 'Close · LAC encounter' : event.weapon === 'grav-lance' ? 'Close · grav lance'
+        : event.weapon === 'energy-torpedo' ? 'Close · energy torpedoes' : 'Close · energy-range pass';
       addShot(eventShot(`beam:${event.id}`, 'encounter', Math.max(0, t0 - 3), subject, theater, { eventId: event.id, beams: beamIndices(subject, t0, t1) },
-        lacs ? 'Close · LAC encounter' : 'Close · energy-range pass',
-        `${unitName(event.from)} and ${unitName(event.to)} at ${lacs ? 'close' : 'energy'} range.`));
+        label, `${unitName(event.from)} and ${unitName(event.to)} at ${lacs ? 'close' : 'energy'} range.`));
     }
   }
   for (const event of pack.events.filter((e) => e.type === 'fire_plan')) {

@@ -1,10 +1,12 @@
+import { sv } from '../evidence';
+import type { Unit } from '../units';
 import { MTS, REC } from './sv-helpers';
 import type { Equipment, MissileProfile, PodLoad } from './types';
 
 const STAGE_180 =
   '180 s per stage, from the MTS §4.2 conventional example; with three stages it reproduces the nine-minute Mk23 run (MTS §4.4)';
 
-export const MISSILES: Record<string, MissileProfile> = {
+const MISSILES_1921: Record<string, MissileProfile> = {
   mk23: {
     id: 'mk23',
     name: 'Mark 23 MDM, half setting, long profile',
@@ -13,6 +15,7 @@ export const MISSILES: Record<string, MissileProfile> = {
     mass: MTS(94, 't', '§4.1 Mark 23'),
     stages: [0, 1, 2].map(() => ({ accel: MTS(48_000, 'g', '§4.1 Mark 23 half setting'), duration: REC(180, 's', STAGE_180) })),
     max_coast: REC(1_200, 's', 'ballistic interval before the last stage; long enough for the Apollo shot beyond 150 Mkm (wiki, Battle of Manticore)'),
+    coast: 'before-last-stage',
     standoff: REC(30_000, 'km', 'MTS Appendix A gives 30,000 to 40,000 km as provisional; the low end is used'),
     beams: MTS(25, 'count', '§4.4 older laserhead descriptions'),
     hit_fraction: REC(0.09, 'ratio', 'share of beams that strike and damage the aimed aspect; calibrated with the Battle of Manticore pack: the 150,000 Home Fleet missiles knock out about 116 of the 240 Second Fleet SD(P) (wiki); see scenarios/manticore/notes.md'),
@@ -32,6 +35,7 @@ export const MISSILES: Record<string, MissileProfile> = {
       duration: REC(180, 's', STAGE_180),
     })),
     max_coast: REC(600, 's', 'ballistic interval assumed'),
+    coast: 'before-last-stage',
     standoff: REC(30_000, 'km', 'MTS Appendix A provisional standoff'),
     beams: REC(25, 'count', 'older laserhead beam count (MTS §4.4) assumed for the Mod G warhead'),
     hit_fraction: REC(0.09, 'ratio', 'same calibration as the Mk23 (Battle of Manticore pack)'),
@@ -51,6 +55,7 @@ export const MISSILES: Record<string, MissileProfile> = {
       duration: REC(180, 's', STAGE_180),
     })),
     max_coast: REC(600, 's', 'ballistic interval assumed'),
+    coast: 'before-last-stage',
     standoff: REC(30_000, 'km', 'MTS Appendix A provisional standoff'),
     beams: REC(20, 'count', 'fewer beams than the Mk23 assumed'),
     hit_fraction: REC(0.075, 'ratio', 'lower terminal accuracy than RMN missiles assumed; same calibration scale as the Mk23'),
@@ -60,6 +65,52 @@ export const MISSILES: Record<string, MissileProfile> = {
     note: 'Reconstruction. The MTS warns against giving every navy one missile envelope (§4.1, §10.3).',
   },
 };
+
+/** On Basilisk Station, quoted directly (P). */
+const OBS = (value: number, unit: Unit, locator: string) => sv(value, unit, 'P', 'obs', { locator });
+
+const OBS_DRIVE = 'On Basilisk Station ch. 29: the warning shot is throttled to 417 KPS² (42,500 g) to raise its burnout time from one minute to three';
+
+const MISSILES_1900: Record<string, MissileProfile> = {
+  'rmn-1900': {
+    id: 'rmn-1900',
+    name: 'RMN single-drive missile, 1900 PD, reduced drive setting',
+    navy: 'RMN',
+    era_from: REC(1890, 'count', 'in service well before 1900 PD; year not established'),
+    mass: REC(null, 't', 'not established'),
+    stages: [{ accel: OBS(42_500, 'g', `ch. 29, ${OBS_DRIVE}`), duration: OBS(180, 's', `ch. 29, ${OBS_DRIVE}`) }],
+    max_coast: REC(600, 's', 'a ballistic missile cannot correct its aim; ten minutes allowed, far more than any shot in the battle uses'),
+    coast: 'after-burnout',
+    standoff: REC(20_000, 'km', 'laserhead standoff of 15,000 to 22,000 km from the supplied extract; not confirmed in the novel'),
+    beams: REC(3, 'count', 'early laserhead rod count not established'),
+    hit_fraction: REC(0.5, 'ratio', 'calibrated so a single leaking laserhead badly damages a light cruiser, as in chapter 30'),
+    damage_per_beam: REC(1, 'ratio', 'abstract damage unit'),
+    reported_burnout_c: null,
+    guidance_allowed: ['shipboard'],
+    note: 'Single impeller drive: 85,000 g for one minute at full setting, or 42,500 g for three minutes, then ballistic (On Basilisk Station ch. 29). The reduced setting is used here because it reproduces both ships\' quoted flight times.',
+  },
+  'pn-1900': {
+    id: 'pn-1900',
+    name: 'People\'s Navy single-drive missile, 1900 PD (reconstruction)',
+    navy: 'PN',
+    era_from: REC(1890, 'count', 'in service well before 1900 PD; year not established'),
+    mass: REC(null, 't', 'not established'),
+    stages: [{
+      accel: REC(42_500, 'g', 'Havenite drive figures are not given; the RMN reduced setting is assumed'),
+      duration: OBS(179, 's', 'ch. 30: at a 188-second flight time the missiles burn out nine seconds before they reach Fearless'),
+    }],
+    max_coast: REC(600, 's', 'same ballistic allowance as the RMN missile'),
+    coast: 'after-burnout',
+    standoff: REC(20_000, 'km', 'laserhead standoff of 15,000 to 22,000 km from the supplied extract; not confirmed in the novel'),
+    beams: REC(3, 'count', 'early laserhead rod count not established'),
+    hit_fraction: REC(0.5, 'ratio', 'calibrated so a single leaking laserhead badly damages a light cruiser, as in chapter 30'),
+    damage_per_beam: REC(1, 'ratio', 'abstract damage unit'),
+    reported_burnout_c: null,
+    guidance_allowed: ['shipboard'],
+    note: 'Sirius\'s laserheads. With the reduced setting the solver gives the 188-second flight time quoted in chapter 30 at the quoted range.',
+  },
+};
+export const MISSILES: Record<string, MissileProfile> = { ...MISSILES_1921, ...MISSILES_1900 };
 
 export const POD_LOADS: Record<string, PodLoad> = {
   'mk17-mk23': { id: 'mk17-mk23', name: 'Mk17 flatpack, ten Mk23', profile: 'mk23', attack_ew: 10, controller: 0, evidence: 'W', source_id: 'mts', locator: '§4.2', era_from: 1919 },

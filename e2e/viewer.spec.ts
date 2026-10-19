@@ -37,6 +37,15 @@ test('training replay plays and scrubs to the end without errors', async ({ page
   expect(errors).toEqual([]);
 });
 
+test('Basilisk replays the grav lance strike without errors', async ({ page }) => {
+  const errors = watchErrors(page);
+  await openBattle(page, 'basilisk');
+  await setState(page, { t: 8163, scale: 'engagement' });
+  await expect(page.locator('.clock-t')).toHaveText('T+2:16:03');
+  await expect(page.locator('#log')).toContainText('grav lance');
+  expect(errors).toEqual([]);
+});
+
 test('Manticore opens in the director inside the Site A console', async ({ page, isMobile }) => {
   const errors = watchErrors(page);
   await openBattle(page, 'manticore');

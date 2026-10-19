@@ -1,0 +1,258 @@
+{
+  "units": [
+    {
+      "kind": "fleet",
+      "id": "fearless",
+      "name": "HMS Fearless",
+      "side": "manticore",
+      "theater": "basilisk",
+      "commander": {
+        "value": "Commander Honor Harrington",
+        "unit": "text",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "throughout"
+      },
+      "flagship_name": {
+        "value": "HMS Fearless",
+        "unit": "text",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "throughout"
+      },
+      "ships": [
+        {
+          "class_id": "courageous-gl",
+          "count": 1,
+          "names": [
+            "HMS Fearless (CL-56)"
+          ],
+          "name_evidence": "P",
+          "flagship": true,
+          "hyper_readiness": "routine",
+          "note": "Grav lance test bed; she arrived at Basilisk short of missiles (W)."
+        }
+      ],
+      "formation": {
+        "kind": "column",
+        "facing": [
+          0,
+          -1,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ],
+        "spacing": {
+          "value": 1000,
+          "unit": "km",
+          "evidence": "S",
+          "source_id": "honor-cic",
+          "uncertainty": "single ship; spacing unused"
+        }
+      },
+      "state": {
+        "t": 0,
+        "place": {
+          "frame": "medusa",
+          "position": {
+            "value": [
+              0,
+              25000,
+              0
+            ],
+            "unit": "km"
+          }
+        },
+        "velocity": {
+          "frame": "system",
+          "velocity_km_s": [
+            0,
+            29.18,
+            0
+          ]
+        },
+        "evidence": "S",
+        "note": "In Medusa orbit near the courier boat; she starts the chase at T+15:00."
+      },
+      "present": {
+        "from": null,
+        "from_via": null,
+        "until": null,
+        "until_via": null
+      },
+      "stores": null,
+      "evidence": "P",
+      "source_id": "obs"
+    },
+    {
+      "kind": "fleet",
+      "id": "sirius",
+      "name": "Sirius",
+      "side": "haven",
+      "theater": "basilisk",
+      "commander": {
+        "value": "Captain Johan Coglin",
+        "unit": "text",
+        "evidence": "W",
+        "source_id": "wiki-hv",
+        "locator": "Johan Coglin"
+      },
+      "flagship_name": {
+        "value": "PMSS Sirius",
+        "unit": "text",
+        "evidence": "W",
+        "source_id": "wiki-hv",
+        "locator": "PMSS Sirius"
+      },
+      "ships": [
+        {
+          "class_id": "astra-q",
+          "count": 1,
+          "names": [
+            "PMSS Sirius"
+          ],
+          "name_evidence": "W",
+          "flagship": true,
+          "hyper_readiness": "ready",
+          "note": "Q-ship crewed by the People's Navy, disguised as an Astra-class freighter (W)."
+        }
+      ],
+      "formation": {
+        "kind": "column",
+        "facing": [
+          0,
+          -1,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ],
+        "spacing": {
+          "value": 1000,
+          "unit": "km",
+          "evidence": "S",
+          "source_id": "honor-cic",
+          "uncertainty": "single ship; spacing unused"
+        }
+      },
+      "state": {
+        "t": 0,
+        "place": {
+          "frame": "medusa",
+          "position": {
+            "value": [
+              0,
+              20000,
+              0
+            ],
+            "unit": "km"
+          }
+        },
+        "velocity": {
+          "frame": "system",
+          "velocity_km_s": [
+            0,
+            29.18,
+            0
+          ]
+        },
+        "evidence": "S",
+        "note": "Breaks Medusa orbit at T+0 and runs straight out for the hyper limit."
+      },
+      "present": {
+        "from": null,
+        "from_via": null,
+        "until": null,
+        "until_via": null
+      },
+      "stores": null,
+      "evidence": "P",
+      "source_id": "obs"
+    },
+    {
+      "kind": "fleet",
+      "id": "courier",
+      "name": "Havenite courier boat",
+      "side": "haven",
+      "theater": "basilisk",
+      "commander": {
+        "value": null,
+        "unit": "text",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "not named"
+      },
+      "flagship_name": {
+        "value": null,
+        "unit": "text",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "not named"
+      },
+      "ships": [
+        {
+          "class_id": "pn-courier",
+          "count": 1
+        }
+      ],
+      "formation": {
+        "kind": "column",
+        "facing": [
+          0,
+          -1,
+          0
+        ],
+        "up": [
+          0,
+          0,
+          1
+        ],
+        "spacing": {
+          "value": 1000,
+          "unit": "km",
+          "evidence": "S",
+          "source_id": "honor-cic",
+          "uncertainty": "single ship; spacing unused"
+        }
+      },
+      "state": {
+        "t": 0,
+        "place": {
+          "frame": "medusa",
+          "position": {
+            "value": [
+              0,
+              26000,
+              0
+            ],
+            "unit": "km"
+          }
+        },
+        "velocity": {
+          "frame": "system",
+          "velocity_km_s": [
+            0,
+            29.18,
+            0
+          ]
+        },
+        "evidence": "S",
+        "note": "The embassy courier, trapped in orbit once Fearless wrecks its impellers."
+      },
+      "present": {
+        "from": null,
+        "from_via": null,
+        "until": null,
+        "until_via": null
+      },
+      "stores": null,
+      "evidence": "P",
+      "source_id": "obs"
+    }
+  ]
+}

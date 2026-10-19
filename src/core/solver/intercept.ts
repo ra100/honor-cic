@@ -3,7 +3,7 @@ import type { MissileProfile } from '../tech';
 import { add, addScaled, len, norm, scale, sub, type Vec3 } from '../vec';
 import { DrivePhase, type KinSegment } from './types';
 
-export interface BurnPlan { stages: Array<{ accel: number; dur: number }>; maxCoast: number }
+export interface BurnPlan { stages: Array<{ accel: number; dur: number }>; maxCoast: number; coastAfterBurnout?: boolean }
 
 export function burnPlanOf(profile: MissileProfile): BurnPlan {
   return {
@@ -12,15 +12,19 @@ export function burnPlanOf(profile: MissileProfile): BurnPlan {
       dur: needBase(s.duration, `${profile.id}.stages.${i}.duration`),
     })),
     maxCoast: needBase(profile.max_coast, `${profile.id}.max_coast`),
+    coastAfterBurnout: profile.coast === 'after-burnout',
   };
 }
 
-/** Burn pieces for a flight of T seconds: stages back to back, a coast inserted before the last stage when needed. */
+/**
+ * Burn pieces for a flight of T seconds: stages back to back, a coast inserted before the last stage when needed, or
+ * after the last stage for a missile that goes ballistic at burnout.
+ */
 export function burnSchedule(plan: BurnPlan, T: number): Array<{ dur: number; accel: number; phase: DrivePhase }> {
   const n = plan.stages.length;
   const powered = plan.stages.reduce((a, s) => a + s.dur, 0);
   const out: Array<{ dur: number; accel: number; phase: DrivePhase }> = [];
-  const phaseOf = (i: number) => (i === n - 1 ? DrivePhase.Terminal : DrivePhase.Boost);
+  const phaseOf = (i: number) => (i === n - 1 && !plan.coastAfterBurnout ? DrivePhase.Terminal : DrivePhase.Boost);
   if (T <= powered) {
     let left = T;
     plan.stages.forEach((s, i) => {
@@ -28,6 +32,11 @@ export function burnSchedule(plan: BurnPlan, T: number): Array<{ dur: number; ac
       if (d > 0) out.push({ dur: d, accel: s.accel, phase: phaseOf(i) });
       left -= d;
     });
+    return out;
+  }
+  if (plan.coastAfterBurnout) {
+    plan.stages.forEach((s, i) => out.push({ dur: s.dur, accel: s.accel, phase: phaseOf(i) }));
+    out.push({ dur: T - powered, accel: 0, phase: DrivePhase.Coast });
     return out;
   }
   plan.stages.slice(0, n - 1).forEach((s, i) => out.push({ dur: s.dur, accel: s.accel, phase: phaseOf(i) }));

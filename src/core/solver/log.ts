@@ -40,7 +40,9 @@ export function narrativeLog(pack: ScenarioPack, times: TimeResolver, units: Uni
         out.push({ t, side: unit(ev.unit)?.side ?? null, kind: 'maneuver', text: `${unit(ev.unit)?.name} accelerates at ${ev.accel.value} ${ev.accel.unit}`, ...base });
         break;
       case 'roll':
-        out.push({ t, side: unit(ev.unit)?.side ?? null, kind: 'maneuver', text: `${unit(ev.unit)?.name} rolls ${ev.angle_deg}°`, ...base });
+        out.push({ t, side: unit(ev.unit)?.side ?? null, kind: 'maneuver', text: ev.axis === 'up'
+          ? `${unit(ev.unit)?.name} turns ${Math.abs(ev.angle_deg)}° to ${ev.angle_deg > 0 ? 'port' : 'starboard'}`
+          : `${unit(ev.unit)?.name} rolls ${ev.angle_deg}°`, ...base });
         break;
       case 'signal':
         out.push({ t, side: ev.unit ? unit(ev.unit)?.side ?? null : null, kind: 'signal', text: `${ev.actor} ${ev.text}`, ...base });

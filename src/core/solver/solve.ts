@@ -98,8 +98,10 @@ export function solve(pack: ScenarioPack, tech: TechRegistry = TECH, onProgress:
   for (const ev of pack.events) {
     if (ev.type !== 'roll') continue;
     const t0 = times.resolve(ev.t);
-    unitOf(ev.unit).rolls.push({ t0, t1: t0 + ev.duration_s, angleRad: ev.angle_deg * DEG });
+    const roll = { t0, t1: t0 + ev.duration_s, angleRad: ev.angle_deg * DEG };
+    unitOf(ev.unit).rolls.push(ev.axis === 'up' ? { ...roll, axis: 'up' } : roll);
   }
+  for (const u of units) u.rolls.sort((a, b) => a.t0 - b.t0);
   const outcomes: TimedOutcome[] = pack.events
     .filter((e): e is OutcomeEvent => e.type === 'outcome')
     .map((ev) => ({ ev, t: times.resolve(ev.t), from: times.resolve(ev.from) }));

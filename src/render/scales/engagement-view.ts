@@ -86,6 +86,9 @@ const ROD_ALLIED = [0.55, 1.0, 0.75];
 const ROD_HOSTILE = [1.0, 0.45, 0.55];
 const GRASER_RGB = [0.6, 1.0, 0.9];
 const HOSTILE_FIRE_RGB = [1.0, 0.12, 0.25];
+/** Grav lance: the wedge colour, since it is a gravitic pulse; energy torpedoes: hot plasma, the flash colour. */
+const LANCE_RGB = [0.0, 0.82, 1.0];
+const TORPEDO_RGB = [1.0, 0.9, 0.68];
 const LAC_KILL_RGB = [1.0, 0.8, 0.5];
 const CM_RGB = [0.72, 0.94, 1.0];
 const PD_RGB = [1.0, 0.74, 0.42];
@@ -652,6 +655,11 @@ export class EngagementView implements ScaleView {
       const classes = Object.entries(u.lacClasses).sort((a, b) => b[1] - a[1])
         .map(([id]) => (ctx.tech.classes[id]?.name ?? id).split(/\s+/)[0]);
       parts.push(`${fmtCount(n)} LACs`, ...classes);
+      return parts.join(' · ');
+    }
+    if (u.shipIdx.length === 1) {
+      const ship = ctx.replay.ships[u.shipIdx[0]];
+      parts.push(ctx.tech.classes[ship.classId]?.name ?? '1 ship');
       return parts.join(' · ');
     }
     let wall = 0;
@@ -1378,7 +1386,7 @@ export class EngagementView implements ScaleView {
         if (target) {
           if (shooterWing < 0 || !this.nearestLac(shooterWing, target, a)) a = target.clone().add(a.sub(z));
           z = target.clone();
-        } else if (b.kind === 'graser' || b.kind === 'laser') {
+        } else if (b.kind === 'graser' || b.kind === 'laser' || b.kind === 'lance' || b.kind === 'torpedo') {
           if (shooterWing >= 0) this.someLac(shooterWing, i, a);
           if (targetWing >= 0) this.nearestLac(targetWing, a, z);
         }
@@ -1399,6 +1407,14 @@ export class EngagementView implements ScaleView {
           this.beamBatch.push(a, z, rgb, (mine ? 1.5 : 2.4) * (ctx.reducedMotion ? 0.75 : left * (0.6 + 0.4 * left)), 2.4);
           if (target) this.glows.push(z, 600 * k, 3, HULL_HIT_RGB, 2.4 * fade, GLOW.spark);
           else this.glows.push(z, 300 * k, 2, rgb, 1.2 * fade, GLOW.spark);
+        } else if (b.kind === 'lance' || b.kind === 'torpedo') {
+          // A grav lance is one broad gravitic pulse; energy torpedoes are bright plasma bolts that travel the line.
+          const left = 1 - u;
+          const lance = b.kind === 'lance';
+          const rgb = lance ? LANCE_RGB : TORPEDO_RGB;
+          const head = lance ? z : a.clone().lerp(z, Math.min(1, 0.25 + u));
+          this.beamBatch.push(a, head, rgb, (lance ? 3 : 2.2) * (ctx.reducedMotion ? 0.75 : left * (0.6 + 0.4 * left)), lance ? 5 : 2.8);
+          this.glows.push(head, (lance ? 1_400 : 800) * k, lance ? 4 : 3, lance ? rgb : HULL_HIT_RGB, 2.6 * fade, GLOW.spark);
         } else if (b.kind === 'transit') {
           this.glows.push(z, 16_000 * k, 16, FOOTPRINT_RGB, 2.2 * (ctx.reducedMotion ? 0.75 : 1 - u), GLOW.ring);
         } else if (b.kind === 'cm-kill') {
@@ -1415,7 +1431,7 @@ export class EngagementView implements ScaleView {
         const ship = this.replay.ships[d.ship];
         if (this.replay.units[ship.unit].theater !== ctx.theater) continue;
         const hull = ctx.tech.classes[ship.classId]?.hull;
-        const size = (hull === 'SD' || hull === 'SD(P)' ? 11_000 : hull === 'BC' || hull === 'BC(P)' ? 7_800 : 5_200) * k;
+        const size = (hull === 'SD' || hull === 'SD(P)' ? 11_000 : hull === 'BC' || hull === 'BC(P)' || hull === 'Q' ? 7_800 : 5_200) * k;
         const p = this.shown.get(d.ship)?.clone() ?? this.origin.point(ctx.frame.shipPos.subarray(d.ship * 3, d.ship * 3 + 3), new THREE.Vector3());
         if (age < DEATH_S) {
           const u = age / DEATH_S;

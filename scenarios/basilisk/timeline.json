@@ -1,0 +1,730 @@
+{
+  "events": [
+    {
+      "id": "note-breakout",
+      "type": "note",
+      "t": 0,
+      "text": "Sirius breaks Medusa orbit and runs for the hyper limit at 410 g, too fast for any freighter.",
+      "side": "haven",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 1,
+      "note": "ch. 27"
+    },
+    {
+      "id": "man-sirius-run",
+      "type": "maneuver",
+      "t": 0,
+      "unit": "sirius",
+      "until": 6287,
+      "accel": {
+        "value": 410,
+        "unit": "g",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 27"
+      },
+      "direction": {
+        "vector": [
+          1,
+          0,
+          0
+        ]
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 2,
+      "note": "Straight out through Medusa: the shortest path to the limit, reached in just under 173 minutes (D, P ch. 27)."
+    },
+    {
+      "id": "out-courier",
+      "type": "outcome",
+      "t": 660,
+      "engagement": "basilisk",
+      "unit": "courier",
+      "from": 600,
+      "roles": [
+        "screen"
+      ],
+      "counts": {
+        "mission_kill": 1
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "note": "Fearless brushes the courier's wedge at under 2 km and wrecks its impeller nodes, trapping it in orbit (ch. 27).",
+      "seed": 3
+    },
+    {
+      "id": "note-courier",
+      "type": "note",
+      "t": 600,
+      "text": "Fearless brushes the Havenite courier boat's wedge and wrecks its impellers, trapping it in Medusa orbit.",
+      "side": "manticore",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 4,
+      "note": "ch. 27"
+    },
+    {
+      "id": "man-fearless-chase",
+      "type": "maneuver",
+      "t": 900,
+      "unit": "fearless",
+      "until": 5700,
+      "accel": {
+        "value": 520,
+        "unit": "g",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 27 and 29: full emergency power"
+      },
+      "direction": {
+        "vector": [
+          1,
+          0,
+          0
+        ]
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 5,
+      "note": "Fifteen minutes behind Sirius (extract, S); the lead reproduces the quoted 25.62 LS at 18,000 km/s and 7.6 Mkm after 36.5 Mkm (D, P ch. 29 and 30)."
+    },
+    {
+      "id": "sig-heave-to",
+      "type": "signal",
+      "t": 4373,
+      "actor": "Commander Harrington",
+      "text": "orders Sirius to cut her drive and heave to for inspection. No answer.",
+      "unit": "fearless",
+      "reacts_to": null,
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "seed": 6
+    },
+    {
+      "id": "fp-warning",
+      "type": "fire_plan",
+      "t": 4433,
+      "engagement": "basilisk",
+      "from": "fearless",
+      "to": "sirius",
+      "profile": "rmn-1900",
+      "salvos": 1,
+      "interval_s": 0,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 0,
+        "ew": 1,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 1,
+      "arrival_window": [
+        4624.3,
+        4627.3
+      ],
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 7,
+      "note": "Tube two, 42,500 g for three minutes, set to burst 5,000 km clear: 25.62 LS, flight time 192.8 s, terminal 93,000 km/s about 10 Mkm from launch (ch. 29). Carried as one non-attack vehicle so it does no damage."
+    },
+    {
+      "id": "rng-warning",
+      "type": "range",
+      "t": 4433,
+      "a": "fearless",
+      "b": "sirius",
+      "distance": {
+        "value": 7680683,
+        "unit": "km",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 29: two-five-point-six-two light-seconds"
+      },
+      "min": null,
+      "tolerance": 0.003,
+      "closing_min_km_s": null,
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 8
+    },
+    {
+      "id": "fp-sirius-first",
+      "type": "fire_plan",
+      "t": 4680,
+      "engagement": "basilisk",
+      "from": "sirius",
+      "to": "fearless",
+      "profile": "pn-1900",
+      "salvos": 1,
+      "interval_s": 0,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 2,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 1,
+      "arrival_window": [
+        4866,
+        4870
+      ],
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 9,
+      "note": "Opens fire when the flight time falls to 188 s, the range 7.6 Mkm after Fearless has come 36.5 Mkm (ch. 30). All stopped."
+    },
+    {
+      "id": "rng-open",
+      "type": "range",
+      "t": 4680,
+      "a": "fearless",
+      "b": "sirius",
+      "distance": {
+        "value": 7600000,
+        "unit": "km",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 30: seven-point-six million kilometers"
+      },
+      "min": null,
+      "tolerance": 0.01,
+      "closing_min_km_s": null,
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 10
+    },
+    {
+      "id": "fp-sirius-pairs",
+      "type": "fire_plan",
+      "t": 4695,
+      "engagement": "basilisk",
+      "from": "sirius",
+      "to": "fearless",
+      "profile": "pn-1900",
+      "salvos": 14,
+      "interval_s": 15,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 28,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 1,
+      "arrival_window": null,
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "seed": 6,
+      "note": "Pairs every fifteen seconds (W); count of salvos S."
+    },
+    {
+      "id": "fp-sirius-sixes",
+      "type": "fire_plan",
+      "t": 4905,
+      "engagement": "basilisk",
+      "from": "sirius",
+      "to": "fearless",
+      "profile": "pn-1900",
+      "salvos": 13,
+      "interval_s": 15,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 78,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 1,
+      "arrival_window": null,
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "seed": 33,
+      "canon_intercept_share": {
+        "value": 1,
+        "unit": "ratio",
+        "evidence": "W",
+        "source_id": "wiki-hv",
+        "locator": "First Battle of Basilisk: no hits after over 90 launches"
+      },
+      "note": "Six-missile salvos every fifteen seconds (extract, wiki); over ninety missiles without a hit (W), against Fearless's point defense, decoys and evasion."
+    },
+    {
+      "id": "fp-fearless-24ls",
+      "type": "fire_plan",
+      "t": 5220,
+      "engagement": "basilisk",
+      "from": "fearless",
+      "to": "sirius",
+      "profile": "rmn-1900",
+      "salvos": 1,
+      "interval_s": 0,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 2,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 2,
+      "arrival_window": null,
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "seed": 13,
+      "note": "At 24 light-seconds Fearless launches two missiles and scores one hit, in a cargo hold (W)."
+    },
+    {
+      "id": "rng-24ls",
+      "type": "range",
+      "t": 5220,
+      "a": "fearless",
+      "b": "sirius",
+      "distance": {
+        "value": 7195019,
+        "unit": "km",
+        "evidence": "W",
+        "source_id": "wiki-hv",
+        "locator": "First Battle of Basilisk"
+      },
+      "min": null,
+      "tolerance": 0.01,
+      "closing_min_km_s": null,
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "seed": 12
+    },
+    {
+      "id": "fp-sirius-volley",
+      "type": "fire_plan",
+      "t": 5523,
+      "engagement": "basilisk",
+      "from": "sirius",
+      "to": "fearless",
+      "profile": "pn-1900",
+      "salvos": 2,
+      "interval_s": 15,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 12,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 6,
+      "arrival_window": null,
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 1,
+      "note": "Another large volley (W); size S. Its laserheads wreck the forward impeller ring and open Fusion One to space (P ch. 30). Timed 17 minutes into the exchange (extract)."
+    },
+    {
+      "id": "man-fearless-half",
+      "type": "maneuver",
+      "t": 5700,
+      "unit": "fearless",
+      "until": 5940,
+      "accel": {
+        "value": 260,
+        "unit": "g",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 30: half power once her forward impellers are out"
+      },
+      "direction": {
+        "vector": [
+          1,
+          0,
+          0
+        ]
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 13,
+      "note": "Repair time S."
+    },
+    {
+      "id": "note-impellers",
+      "type": "note",
+      "t": 5700,
+      "text": "Laserheads wreck Fearless's forward impeller ring and open Fusion One to space. She drops to half power.",
+      "side": "manticore",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 14,
+      "note": "ch. 30"
+    },
+    {
+      "id": "man-fearless-chase2",
+      "type": "maneuver",
+      "t": 5940,
+      "unit": "fearless",
+      "until": 6872,
+      "accel": {
+        "value": 520,
+        "unit": "g",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 31: her acceleration surges back up"
+      },
+      "direction": {
+        "vector": [
+          1,
+          0,
+          0
+        ]
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 15,
+      "note": "Her engineers restore the forward ring (P ch. 31); when is S."
+    },
+    {
+      "id": "fp-sirius-steady",
+      "type": "fire_plan",
+      "t": 5583,
+      "engagement": "basilisk",
+      "from": "sirius",
+      "to": "fearless",
+      "profile": "pn-1900",
+      "salvos": 12,
+      "interval_s": 60,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 72,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 6,
+      "arrival_window": null,
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 3,
+      "note": "Coglin keeps firing while Fearless repairs; rate S."
+    },
+    {
+      "id": "fp-fearless-singles",
+      "type": "fire_plan",
+      "t": 6000,
+      "engagement": "basilisk",
+      "from": "fearless",
+      "to": "sirius",
+      "profile": "rmn-1900",
+      "salvos": 18,
+      "interval_s": 30,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 18,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 1,
+      "arrival_window": null,
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 1,
+      "note": "The cruiser fires only single-missile salvos (ch. 31); interval S. One hit takes out two of Sirius's beta nodes."
+    },
+    {
+      "id": "man-sirius-damaged",
+      "type": "maneuver",
+      "t": 6287,
+      "unit": "sirius",
+      "until": 6600,
+      "accel": {
+        "value": 373,
+        "unit": "g",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 31: two beta nodes gone cut her acceleration by over nine percent"
+      },
+      "direction": {
+        "vector": [
+          1,
+          0,
+          0
+        ]
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 16,
+      "note": "410 g less 9% (D)."
+    },
+    {
+      "id": "note-beta",
+      "type": "note",
+      "t": 6287,
+      "text": "A Fearless laserhead takes out two of Sirius's beta nodes. Her acceleration falls by over nine percent.",
+      "side": "manticore",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 17,
+      "note": "ch. 31"
+    },
+    {
+      "id": "turn-sirius",
+      "type": "roll",
+      "t": 6600,
+      "unit": "sirius",
+      "angle_deg": 180,
+      "duration_s": 60,
+      "axis": "up",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 18,
+      "note": "Coglin turns back to destroy the only witness to his first shot (ch. 31). Sirius cuts her drive and turns to face Fearless; the timing is S."
+    },
+    {
+      "id": "fp-sirius-close",
+      "type": "fire_plan",
+      "t": 6610,
+      "engagement": "basilisk",
+      "from": "sirius",
+      "to": "fearless",
+      "profile": "pn-1900",
+      "salvos": 12,
+      "interval_s": 15,
+      "launch": "tube",
+      "pod_load": null,
+      "pods": null,
+      "totals": {
+        "attack": 72,
+        "ew": 0,
+        "controller": 0
+      },
+      "guidance": "shipboard",
+      "packets_per_salvo": 6,
+      "arrival_window": null,
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 2,
+      "note": "Heavy fire as Sirius turns: hits amidships and on the bridge, and Fusion One's bottle fails (P ch. 31). Salvo count S."
+    },
+    {
+      "id": "note-fusion",
+      "type": "note",
+      "t": 6820,
+      "text": "Fusion One's containment fails as Lieutenant Commander Santos jettisons the bottle. She, Manning, Earnhardt and some forty others die; the ship is saved.",
+      "side": "manticore",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 19,
+      "note": "ch. 31; the wiki gives the forty"
+    },
+    {
+      "id": "note-feint",
+      "type": "note",
+      "t": 6872,
+      "text": "Fearless cuts her drive and turns across Sirius's path as if crippled, her wrecked port side toward the enemy.",
+      "side": "manticore",
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 20,
+      "note": "The extract describes the feint; the novel has Honor let Coglin close. The geometry is a reconstruction."
+    },
+    {
+      "id": "turn-fearless",
+      "type": "roll",
+      "t": 6872,
+      "unit": "fearless",
+      "angle_deg": -90,
+      "duration_s": 60,
+      "axis": "up",
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 21
+    },
+    {
+      "id": "rng-lance-approach",
+      "type": "range",
+      "t": 8027,
+      "a": "fearless",
+      "b": "sirius",
+      "distance": {
+        "value": 500000,
+        "unit": "km",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 31: range five hundred thousand, closing at three-three-nine-two KPS"
+      },
+      "min": null,
+      "tolerance": 0.02,
+      "closing_min_km_s": 3390,
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 22,
+      "note": "Both ships coast here, so the closing speed holds at the quoted 3,392 km/s."
+    },
+    {
+      "id": "cross-sirius",
+      "type": "roll",
+      "t": 7900,
+      "unit": "sirius",
+      "angle_deg": 90,
+      "duration_s": 40,
+      "axis": "up",
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 23,
+      "note": "Sirius swings to cross Fearless's bow and rake her with a broadside."
+    },
+    {
+      "id": "man-sirius-cross",
+      "type": "maneuver",
+      "t": 7900,
+      "unit": "sirius",
+      "until": 7960,
+      "accel": {
+        "value": 373,
+        "unit": "g",
+        "evidence": "S",
+        "source_id": "honor-cic",
+        "uncertainty": "Coglin's crossing burn; length S"
+      },
+      "direction": {
+        "vector": [
+          0,
+          -1,
+          0
+        ]
+      },
+      "evidence": "S",
+      "source_id": "honor-cic",
+      "seed": 24
+    },
+    {
+      "id": "roll-fearless",
+      "type": "roll",
+      "t": 8147,
+      "unit": "fearless",
+      "angle_deg": 180,
+      "duration_s": 12,
+      "axis": "bow",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 25,
+      "note": "Honor rolls ship to bring the intact starboard broadside and the lance to bear (extract; the roll is consistent with ch. 31)."
+    },
+    {
+      "id": "ba-lance",
+      "type": "beam_attack",
+      "t": 8162,
+      "engagement": "basilisk",
+      "from": "fearless",
+      "to": "sirius",
+      "until": 8163,
+      "weapon": "grav-lance",
+      "shots": 1,
+      "range": {
+        "value": 100000,
+        "unit": "km",
+        "evidence": "P",
+        "source_id": "obs",
+        "locator": "ch. 31: maximum range under optimum circumstances barely a hundred thousand kilometers"
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 26,
+      "note": "Rafe Cardones fires the lance; Sirius's sidewall collapses (P). The extract's 400,000 km is the general beam range against sidewalls, not the lance's."
+    },
+    {
+      "id": "ba-torpedoes",
+      "type": "beam_attack",
+      "t": 8164,
+      "engagement": "basilisk",
+      "from": "fearless",
+      "to": "sirius",
+      "until": 8174,
+      "weapon": "energy-torpedo",
+      "shots": 16,
+      "range": {
+        "value": 300000,
+        "unit": "km",
+        "evidence": "W",
+        "source_id": "mts",
+        "locator": "\u00a74.4 reported reach"
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 27,
+      "note": "Her four surviving energy torpedo launchers go to rapid, continuous fire (P ch. 31); shot count S."
+    },
+    {
+      "id": "out-sirius",
+      "type": "outcome",
+      "t": 8174,
+      "engagement": "basilisk",
+      "unit": "sirius",
+      "from": 8162,
+      "roles": [
+        "wall"
+      ],
+      "counts": {
+        "destroyed": 1
+      },
+      "evidence": "P",
+      "source_id": "obs",
+      "note": "Destroyed with all hands (P ch. 31 and 32).",
+      "seed": 28
+    },
+    {
+      "id": "out-fearless",
+      "type": "outcome",
+      "t": 8192,
+      "engagement": "basilisk",
+      "unit": "fearless",
+      "from": 4680,
+      "roles": [
+        "screen"
+      ],
+      "counts": {
+        "mission_kill": 1
+      },
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "note": "Constructive total loss (W): 107 dead (P ch. 32), placed on the List of Honor and scrapped.",
+      "seed": 29
+    },
+    {
+      "id": "note-zulu",
+      "type": "note",
+      "t": 8282,
+      "text": "Fearless's Case Zulu signal brings Home Fleet to Basilisk; the Havenite squadrons that arrive later turn back.",
+      "side": "manticore",
+      "evidence": "W",
+      "source_id": "wiki-hv",
+      "seed": 30,
+      "note": "Wikipedia and the wiki summary; arrival day not established"
+    },
+    {
+      "id": "note-dead",
+      "type": "note",
+      "t": 8312,
+      "text": "Fearless: 107 dead, more than a third of those aboard, and 70% of engineering and damage control are casualties.",
+      "side": "manticore",
+      "evidence": "P",
+      "source_id": "obs",
+      "seed": 31,
+      "note": "ch. 32"
+    }
+  ]
+}

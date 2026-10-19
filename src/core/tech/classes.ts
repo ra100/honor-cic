@@ -1,3 +1,4 @@
+import { sv } from '../evidence';
 import type { Unit } from '../units';
 import { DER, MTS, REC, mtsMounts, recMounts } from './sv-helpers';
 import type { Hull, Mounts, Navy, Role, ShipClass, SV } from './types';
@@ -69,6 +70,20 @@ function ship(s: Spec): ShipClass {
     note: s.note,
   };
 }
+
+/** On Basilisk Station (P) and the Honorverse wiki (W), quoted directly rather than through the MTS. */
+const OBS = (value: number, unit: Unit, locator: string): SV => sv(value, unit, 'P', 'obs', { locator });
+const HVW = (value: number, unit: Unit, locator: string): SV => sv(value, unit, 'W', 'wiki-hv', { locator });
+const BASILISK_DEF = 'not published; set so the replay follows On Basilisk Station: no hits from the first ninety-odd missiles, then a few laserheads leak through';
+function basiliskDefense(cmWaves: number, pkCm: number, pdShots: number, pkPd: number, why = BASILISK_DEF): ShipClass['defense'] {
+  return {
+    cm_waves: REC(cmWaves, 'count', why), pk_cm: REC(pkCm, 'ratio', why),
+    pd_shots: REC(pdShots, 'count', why), pk_pd: REC(pkPd, 'ratio', why),
+    control_links: REC(null, 'count', 'telemetry link count not established'),
+  };
+}
+const FEARLESS_FIT = 'Fearless\'s refit fit is not tabulated; the wiki says most of the conventional broadside was removed for the grav lance and fourteen small energy torpedo launchers';
+const SIRIUS_FIT = 'Q-ship armament not tabulated; the extract calls it a battlecruiser-equivalent broadside with chase batteries, and chapter 30 says her chase fire is twice as heavy as anything Fearless can reply with';
 
 const INVICTUS_SIDE = 'mount counts not in the MTS; Invictus per-side figures assumed';
 
@@ -282,6 +297,43 @@ const LIST: ShipClass[] = [
     hyper: CYCLE.LAC(), wedge: WEDGE.LAC(), defense: LAC_DEF(), durability: DUR(2),
     crew: MTS(15, 'count', '§5.7 crew 13 to 15', 'upper bound of the published range'),
     note: 'Fleet-defense LAC; Alpha and Beta variants differ in power, walls and weapons (MTS §5.7).',
+  }),
+  ship({
+    id: 'courageous-gl', name: 'Courageous-class CL, grav lance refit (HMS Fearless)', navy: 'RMN', hull: 'CL', role: 'screen',
+    era: HVW(1820, 'count', 'HMS Fearless (CL-56): in service 1820 to 1901 PD'), mass: HVW(88_000, 't', 'Courageous class'),
+    dims: [HVW(389, 'm', 'Courageous class'), UNK('m'), UNK('m')],
+    accel: [OBS(520, 'g', 'ch. 27 and 29: full emergency power, a steady 520 gravities'), OBS(503, 'g', 'ch. 3: 503 gravities at full military power')],
+    broadside: {
+      ...recMounts(FEARLESS_FIT, { missile: 2, laser: 2, cm: 2, pd: 4 }),
+      energy_torpedo: DER(7, 'count', 'fourteen energy torpedo launchers (W, HMS Fearless) split between the broadsides'),
+    },
+    fore: recMounts('Courageous chase battery (W: two missile tubes and a 60 cm spinal laser), unchanged by the refit', { missile: 2, laser: 1, cm: 1, pd: 2 }),
+    aft: recMounts('the Courageous chase battery is assumed at each end', { missile: 2, laser: 1, cm: 1, pd: 2 }),
+    magazine: [REC(60, 'count', 'the extract says fewer than 60 missiles; the wiki says the refit left her short of missiles'), 'rmn-1900'],
+    hyper: CYCLE.CRUISER(), wedge: WEDGE.CL(), defense: basiliskDefense(4, 0.8, 6, 0.8), durability: DUR(13),
+    crew: REC(null, 'count', 'not established; the 107 dead were more than a third of those aboard (On Basilisk Station ch. 32)'),
+    note: 'Experimental test bed: one grav lance (no mount key; it fires as a beam attack) and fourteen energy torpedo launchers in place of most of the broadside. The lance reaches barely 100,000 km under ideal conditions (On Basilisk Station ch. 31).',
+  }),
+  ship({
+    id: 'astra-q', name: 'Q-ship on an Astra-class freighter hull (PMSS Sirius)', navy: 'PN', hull: 'Q', role: 'wall',
+    era: ERA(1895, 'Q-ship conversions predate the battle; year not established'),
+    mass: REC(null, 't', 'not established; the extract says about 8 million tons, and chapter 30 says a Trumball-class Q-ship was over a million and a half tons smaller'),
+    dims: [UNK('m'), UNK('m'), UNK('m')],
+    accel: [OBS(410, 'g', 'ch. 27: underway at 410 gravities, impossibly fast for a freighter'), DER(328, 'g', '80% of the observed acceleration (MTS §3.2 convention)')],
+    broadside: recMounts(SIRIUS_FIT, { missile: 10, graser: 4, laser: 6, cm: 8, pd: 10 }),
+    fore: recMounts(SIRIUS_FIT, { missile: 2, graser: 1, cm: 2, pd: 4 }),
+    aft: recMounts(SIRIUS_FIT, { missile: 6, graser: 1, cm: 2, pd: 4 }),
+    magazine: [REC(400, 'count', 'Q-ship magazines not established; the extract speaks of extensive reserves'), 'pn-1900'],
+    hyper: CYCLE.MID(), wedge: WEDGE.BC(), defense: basiliskDefense(4, 0.75, 6, 0.75), durability: DUR(40),
+    note: 'Built as a warship and disguised as an Astra-class freighter (W, PMSS Sirius). Military impellers give her 410 g. Weapon counts are labelled assumptions.',
+  }),
+  ship({
+    id: 'pn-courier', name: 'Havenite embassy courier boat', navy: 'PN', hull: 'CB', role: 'screen',
+    era: ERA(1890, 'year not established'), mass: UNK('t'), dims: [UNK('m'), UNK('m'), UNK('m')],
+    accel: [REC(500, 'g', 'not given in the novel; a small courier\'s figure assumed'), DER(400, 'g', '80% of the assumed maximum')],
+    broadside: recMounts('unarmed courier', {}), fore: recMounts('unarmed courier', {}), aft: recMounts('unarmed courier', {}),
+    hyper: CYCLE.LAC(), wedge: WEDGE.LAC(), defense: basiliskDefense(0, 0, 0, 0, 'unarmed courier'), durability: DUR(2),
+    note: 'Unarmed. Fearless brushed its wedge in Medusa orbit and wrecked its impeller nodes before the chase (On Basilisk Station ch. 27).',
   }),
 ];
 

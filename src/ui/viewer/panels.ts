@@ -165,7 +165,7 @@ export class InspectorPanel {
   }
 }
 
-const mountsPerSide = (cls: ShipClass, key: 'cm' | 'pd' | 'missile' | 'graser'): string => formatLabelled(cls.broadside[key]);
+const mountsPerSide = (cls: ShipClass, key: 'cm' | 'pd' | 'missile' | 'graser' | 'laser' | 'energy_torpedo'): string => formatLabelled(cls.broadside[key]);
 
 /** Site B object panel for the ship detail view (B report §4.13). */
 export class ShipPanel {
@@ -200,9 +200,11 @@ export class ShipPanel {
       ['Length', formatLabelled(cls.length)],
       ['Mass', formatLabelled(cls.mass)],
       ['Max / normal accel.', `${formatLabelled(cls.accel_max)} / ${formatLabelled(cls.accel_normal)}`],
-      ['Magazine / pods', formatLabelled(cls.pod_capacity)],
+      ['Magazine / pods', `${formatLabelled(cls.magazine)} / ${formatLabelled(cls.pod_capacity)}`],
       ['Tubes, each side', mountsPerSide(cls, 'missile')],
       ['Grasers, each side', mountsPerSide(cls, 'graser')],
+      ...(['laser', 'energy_torpedo'] as const).filter((k) => cls.broadside[k].value)
+        .map((k): [string, string] => [k === 'laser' ? 'Lasers, each side' : 'Energy torpedoes, each side', mountsPerSide(cls, k)]),
       ['CM launchers', `${mountsPerSide(cls, 'cm')} / broadside`],
       ['PD clusters', `${mountsPerSide(cls, 'pd')} / broadside`],
     ];

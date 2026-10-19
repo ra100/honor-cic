@@ -3,18 +3,21 @@ import { basis, type Basis } from './formation';
 import type { Aspect } from './types';
 
 export interface WedgeDims { bandOffset: number; bandLength: number; bandWidth: number }
-export interface Roll { t0: number; t1: number; angleRad: number }
+/** A turn of the unit's axes: about the bow (a roll) or, with axis 'up', about the dorsal axis (a turn of the bow). */
+export interface Roll { t0: number; t1: number; angleRad: number; axis?: 'bow' | 'up' }
 
-/** Unit axes at t, with completed rolls applied and the current roll interpolated. Rolls turn about the bow axis. */
+/** Unit axes at t: turns apply in time order, each about the axes left by the ones before, the current one interpolated. */
 export function orientationAt(facing: Vec3, up: Vec3, rolls: Roll[], t: number): Basis {
   const b = basis(facing, up);
-  let angle = 0;
+  let f = b.f;
+  let u = b.u;
   for (const r of rolls) {
-    if (t >= r.t1) angle += r.angleRad;
-    else if (t > r.t0) angle += (r.angleRad * (t - r.t0)) / (r.t1 - r.t0);
+    if (t <= r.t0) continue;
+    const angle = t >= r.t1 ? r.angleRad : (r.angleRad * (t - r.t0)) / (r.t1 - r.t0);
+    if (r.axis === 'up') f = rotateAbout(f, u, angle);
+    else u = rotateAbout(u, f, angle);
   }
-  const u = rotateAbout(b.u, b.f, angle);
-  return { f: b.f, u, s: cross(b.f, u) };
+  return { f, u, s: cross(f, u) };
 }
 
 /** Where an attack travelling along `incoming` meets the ship (MTS §3.1, §4.6). */
