@@ -131,6 +131,10 @@ select.tb option, select option { background: #0b1424; color: var(--ink); }
 .lbl.callout small { font: 400 10px/1.4 var(--f-mono); color: #a3b4c0; opacity: 1; }
 /* Site B dims a fleet's callout until it arrives (B report §2.10). */
 .lbl.pending { opacity: 0.6; }
+.lbl.course { font: 400 10px/1.3 var(--f-mono); letter-spacing: 0.06em; padding-left: 0; }
+.lbl.course::before { display: none; }
+.lbl.course small { font: 400 10px/1.3 var(--f-mono); opacity: 0.75; }
+.lbl.course.turn { color: var(--amber); }
 .lbl.note { font: 400 10px/1.4 var(--f-mono); letter-spacing: 0.045em; color: #648798; padding-left: 0; }
 .lbl.note::before { display: none; }
 

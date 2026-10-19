@@ -14,7 +14,7 @@ export const DENSITIES = [1, 2, 4, 8, 16] as const;
 export type Speed = number | 'auto';
 
 export const DEFAULT_LAYERS: Record<LayerId, boolean> = {
-  celestial: true, truth: true, commander: false, engagement: true, protection: true, comms: true, damage: true,
+  celestial: true, truth: true, commander: false, courses: true, engagement: true, protection: true, comms: true, damage: true,
 };
 
 export interface ViewerState {

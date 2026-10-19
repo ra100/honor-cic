@@ -54,7 +54,7 @@ const KEYS: Array<[string, string]> = [
   ['P', 'Switch between Actual and Perceived'], ['Esc', 'Close a menu, then clear the selection'],
 ];
 const LAYER_SWATCH: Record<(typeof LAYERS)[number], string> = {
-  celestial: '#7ab0ff', truth: '#00ff66', commander: '#ffb300', engagement: '#28ff80', protection: '#00d2ff', comms: '#8a2be2', damage: '#c08060',
+  celestial: '#7ab0ff', truth: '#00ff66', commander: '#ffb300', courses: '#5ae0f3', engagement: '#28ff80', protection: '#00d2ff', comms: '#8a2be2', damage: '#c08060',
 };
 const ICON = {
   play: 'M4 2.5v11l9.5-5.5z', pause: 'M4 3h3v10H4zM9 3h3v10H9z', back: 'M8 3v3L3 8l5 2v3L1 8zM15 3v10L9 8z',
@@ -314,6 +314,7 @@ export function buildHud(d: HudDeps): Hud {
     legend(svg('<path d="M9 2 16 9 9 16 2 9z" fill="none" stroke="#ff4d6a" stroke-width="1.6"/>'), 'Hostile ship', 'side colour; glyph shape by type'),
     legend(svg('<g fill="#00ff66">' + [[2.5, 3.5], [9.5, 10.5]].map(([x0, y0]) => [0, 1, 2, 3].flatMap((c) => [0, 1, 2].map((r) => `<circle cx="${x0 + c * 1.7}" cy="${y0 + r * 1.6}" r="0.75"/>`)).join('')).join('') + '</g>'), 'LAC wing', 'every LAC a dot, in squadrons of twelve; a lost LAC flashes and goes out'),
     legend(svg('<ellipse cx="8" cy="10" rx="6.5" ry="3.5" fill="none" stroke="#ff4d6a" stroke-width="1.2"/><path d="M8 10 16 4M16 4l-3.4.4M16 4l-1.4 3" stroke="#00c2ee" stroke-width="1.3" fill="none"/>'), 'Fleet ring and course', 'ring around the formation; cyan arrow shows its velocity'),
+    legend(svg('<path d="M2 15 7 10M9 8.2 11.5 6" stroke="#00ff66" stroke-width="1.4" stroke-dasharray="2 1.6" fill="none"/><path d="M8 7 10 9 8 11 6 9z" fill="none" stroke="#ffb300" stroke-width="1.1"/><circle cx="14" cy="4" r="2.6" fill="none" stroke="#00ff66" stroke-width="1.1"/><path d="M14 0.5v1.6M14 5.9v1.6M10.5 4h1.6M15.9 4h1.6" stroke="#00ff66" stroke-width="1"/>'), 'Projected course', 'where a fleet goes if it holds its present velocity and thrust, bent by the stars\' gravity; ticks mark equal times, the amber diamond is turnover, the reticle the estimated arrival, intercept or translation point, the cone one sigma of cross-track uncertainty [S]'),
     legend(svg('<circle cx="9" cy="9" r="6.5" fill="none" stroke="#8199b0" stroke-dasharray="2 2"/><path d="M9 6 12 9 9 12 6 9z" fill="#ff4d6a"/>'), 'Contact', 'perceived picture: ring = position uncertainty, label = age of the data'),
     legend(svg('<path d="M2 6h14M2 12h14" stroke="#00d2ff" stroke-width="1.6"/>'), 'Impeller wedge', 'stress bands above and below the hull'),
     h('h3', null, 'Weapons and effects'),

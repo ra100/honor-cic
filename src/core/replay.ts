@@ -1,7 +1,7 @@
 import { hashSeed } from './rng';
 import { orientationAt, type Roll } from './solver/geometry';
 import { toSystem } from './solver/formation';
-import { segmentState } from './solver/kinematics';
+import { segmentAt, segmentState } from './solver/kinematics';
 import type { PacketTrack } from './solver/packets';
 import type { BeamEvent, LogEntry } from './solver/runtime';
 import { DrivePhase, ShipStatus, SUBSYSTEMS, type Counts, type KinSegment, type Subsystem } from './solver/types';
@@ -77,6 +77,8 @@ export interface Replay {
 export const clampT = (r: Replay, t: number): number => Math.min(Math.max(t, 0), r.duration_s);
 export const unitPosition = (u: UnitTrack, t: number, out?: Vec3): Vec3 => segmentState(u.segments, t, out).p;
 export const unitVelocity = (u: UnitTrack, t: number): Vec3 => segmentState(u.segments, t).v;
+/** Thrust acceleration at t, km/s²; zero while coasting. */
+export const unitAccel = (u: UnitTrack, t: number): Vec3 => [...segmentAt(u.segments, t).a];
 export const unitPresent = (u: UnitTrack, t: number): boolean => t >= u.tAppear && t < u.tDepart;
 
 function lastAtOrBefore<T extends { t: number }>(steps: T[], t: number): T | null {

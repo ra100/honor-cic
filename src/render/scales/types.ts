@@ -18,12 +18,13 @@ export interface ShipToggles { roll: boolean; pods: boolean; sails: boolean; fir
 export const FIRE_DEMO_S = 20;
 
 /** MTS §11.1 display layers. */
-export const LAYERS = ['celestial', 'truth', 'commander', 'engagement', 'protection', 'comms', 'damage'] as const;
+export const LAYERS = ['celestial', 'truth', 'commander', 'courses', 'engagement', 'protection', 'comms', 'damage'] as const;
 export type LayerId = (typeof LAYERS)[number];
 export const LAYER_TEXT: Record<LayerId, { label: string; hint: string }> = {
   celestial: { label: 'Celestial map', hint: 'Stars, planets, orbits and hyper limits' },
   truth: { label: 'Ground truth', hint: 'Actual positions and events' },
   commander: { label: 'Commander picture', hint: 'Delayed contacts with age and uncertainty' },
+  courses: { label: 'Projected courses', hint: 'Estimated path from velocity, thrust and gravity, with turnover, arrival and an uncertainty cone' },
   engagement: { label: 'Engagement', hint: 'Missile packets, drive phases and attacks' },
   protection: { label: 'Protection', hint: 'Wedges, sidewalls and exposed aspects' },
   comms: { label: 'Communications', hint: 'Apollo control links and update age' },
