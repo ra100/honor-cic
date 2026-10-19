@@ -28,6 +28,31 @@ export function niceRingStep(targetKm: number): number {
   return best;
 }
 
+/** Half-width, in natural-log units of the target spacing, of the crossfade around each switch between nice steps. */
+const STEP_BLEND = 0.25;
+
+/** The nice steps either side of a nice step on the 1 / 2.5 / 5 ladder. */
+function adjacentStep(step: number, up: boolean): number {
+  const exp = Math.floor(Math.log10(step) + 1e-9);
+  const m = Math.round((step / 10 ** exp) * 10) / 10;
+  const i = MANTISSAS.indexOf(m);
+  if (up) return i === MANTISSAS.length - 1 ? 10 ** (exp + 1) : MANTISSAS[i + 1] * 10 ** exp;
+  return i === 0 ? MANTISSAS[MANTISSAS.length - 1] * 10 ** (exp - 1) : MANTISSAS[i - 1] * 10 ** exp;
+}
+
+/**
+ * The nice step for a target spacing, the adjacent step the target is heading toward, and that step's weight: 0 well
+ * inside a step, 0.5 at the switch. Both sides of a switch give the same picture, so the rings fade from one spacing to
+ * the next as the camera or the enemy moves instead of snapping to half or double the size.
+ */
+export function blendedRingStep(targetKm: number): { step: number; next: number; mix: number } {
+  const step = niceRingStep(targetKm);
+  if (!Number.isFinite(targetKm) || targetKm <= 0) return { step, next: step, mix: 0 };
+  const next = adjacentStep(step, targetKm > step);
+  const d = Math.abs(Math.log(targetKm) - 0.5 * (Math.log(step) + Math.log(next)));
+  return { step, next, mix: 0.5 * Math.max(0, 1 - d / STEP_BLEND) };
+}
+
 /** Site A's ring label text: "10M km"; below a million kilometres the full figure. */
 export function fmtRingKm(km: number): string {
   if (km >= 1_000_000) return `${Number((km / 1_000_000).toFixed(2))}M km`;
@@ -45,6 +70,9 @@ export interface RingPlan {
   enemyKm: number | null;
   /** Minor ring spacing; majors fall on every second ring. */
   step: number;
+  /** The adjacent spacing the rings are fading toward, drawn at weight `mix` (0 to 0.5) beside `step`. */
+  next: number;
+  mix: number;
   /** Disc radius; rings fade out over its outer 40 %. */
   radius: number;
   labels: RingLabel[];
@@ -72,16 +100,18 @@ export function ringPlan(centre: Vec3, unit: number | null, enemy: Vec3 | null, 
   }
   const camera = Math.max(1, Number.isFinite(cameraKm) ? cameraKm : 1);
   const hasEnemy = enemyKm !== null && enemyKm > 1;
-  const step = niceRingStep(hasEnemy ? Math.min(0.066 * camera, (3 * enemyKm!) / 13) : 0.066 * camera);
+  const { step, next, mix } = blendedRingStep(hasEnemy ? Math.min(0.066 * camera, (3 * enemyKm!) / 13) : 0.066 * camera);
   const major = step * 2;
   const reach = hasEnemy ? Math.ceil((1.25 * enemyKm!) / major - 1e-9) * major : 0;
-  const radius = Math.min(40 * step, Math.max(18 * step, reach));
+  // The 18 to 40 ring bounds follow the blended spacing, so the disc grows and shrinks smoothly through a step switch.
+  const shown = Math.exp((1 - mix) * Math.log(step) + mix * Math.log(next));
+  const radius = Math.min(40 * shown, Math.max(18 * shown, reach));
   const labels: RingLabel[] = [];
   for (let k = 1; k <= MAX_RING_LABELS && k * major <= 0.8 * radius + 1e-6; k++) {
     const km = k * major;
     labels.push({ km, text: fmtRingKm(km), pos: [centre[0] + bearing[0] * km, centre[1] + bearing[1] * km, centre[2]] });
   }
-  return { unit, centre: [...centre], bearing, enemyKm, step, radius, labels };
+  return { unit, centre: [...centre], bearing, enemyKm, step, next, mix, radius, labels };
 }
 
 /** Grid visibility by camera distance to the ring centre: A fades in from 0.4 to 4 Mkm and out from 260 to 700 Mkm of a 90 Mkm disc. */
