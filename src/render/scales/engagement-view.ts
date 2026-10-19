@@ -16,6 +16,7 @@ import { bodyPosition, exclusionsAt, indexBodies } from '../../core/solver/orbit
 import { fmtCount, fmtDistance, fmtDuration, kmToLm } from '../../core/units';
 import type { Vec3 } from '../../core/vec';
 import { DOT_CAP, DotCache, packetSpreadKm, planDensity, salvoSpreadKm, sampledCount } from '../density';
+import { CourseLayer, FleetCourses } from '../courses';
 import { BodyLayer } from '../engagement/bodies';
 import {
   fleetMarksShown, gridFade, nearestEnemyUnit, ringCentreUnit, ringLabelsShown, ringPlan, smoothstep, type RingPlan,
@@ -31,7 +32,7 @@ import { shipGlyph } from '../glyphs';
 import { projectedBounds, type LabelSpec } from '../labels';
 import { LineBatch } from '../lines';
 import { FloatingOrigin } from '../origin';
-import { hexToNum, PALETTE, rgbOf, STATUS_BRIGHTNESS } from '../palette';
+import { hexToNum, inkOf, PALETTE, rgbOf, STATUS_BRIGHTNESS } from '../palette';
 import { PointCloud, SHAPE } from '../points';
 import { beamTheatersFor, LAUNCH_CUE_S, streakTailT } from '../salvos';
 import type { TechRegistry } from '../../core/tech';
@@ -103,6 +104,8 @@ export interface DrawCounts {
   /** Fleet rings drawn. */
   fleetRings: number;
   bodies: number;
+  /** Projected fleet courses drawn. */
+  courses: number;
 }
 
 export const ageText = (s: number): string => (s < 60 ? `${s.toFixed(1)} s old` : `${fmtDuration(s)} old`);
@@ -160,6 +163,8 @@ export class EngagementView implements ScaleView {
   private readonly wedgeLines = new LineBatch(WEDGE_CAP * 16, false, 0.8);
   private readonly contactLines = new LineBatch(16_384, false, 0.7);
   private readonly markLines: LineBatch;
+  private readonly courseLines = new CourseLayer(32_768, 1);
+  private readonly courses: FleetCourses;
   private readonly plane = new TacticalPlane();
   private readonly bodyLayer: BodyLayer;
   private readonly streaks: StreakLayer;
@@ -248,6 +253,7 @@ export class EngagementView implements ScaleView {
     this.contactCloud.points.renderOrder = 21;
     this.markLines = new LineBatch(Math.max(64, replay.units.length * (MARK_SEGMENTS + 4)), true, 1);
     this.markLines.lines.renderOrder = 2;
+    this.courses = new FleetCourses(pack.bodies, replay);
     this.wedgeLines.lines.renderOrder = 7;
     let anchors = 1 + replay.ships.length;
     replay.units.forEach((u, i) => {
@@ -303,7 +309,7 @@ export class EngagementView implements ScaleView {
     this.bodies = indexBodies(pack.bodies);
     this.bodyLayer = new BodyLayer(this.bodies);
     this.scene.add(
-      this.plane.mesh, this.markLines.lines, this.links.mesh, this.bodyLayer.points, this.bodyLayer.glows.mesh,
+      this.plane.mesh, this.markLines.lines, this.courseLines.lines.lines, this.links.mesh, this.bodyLayer.points, this.bodyLayer.glows.mesh,
       this.streaks.mesh, this.beamBatch.mesh, this.glows.mesh, this.wedgeLines.lines, this.contactLines.lines,
       this.lacCloud.points, this.shipCloud.points, this.contactCloud.points,
     );
@@ -454,6 +460,7 @@ export class EngagementView implements ScaleView {
     this.drawShips(ctx, truth, labels);
     this.drawGrid(ctx, labels);
     this.drawMarks(ctx, truth);
+    this.drawCourses(ctx, truth && ctx.layers.courses, labels, width, height);
     this.drawLacs(ctx, truth);
     this.drawMissiles(ctx, truth && ctx.layers.engagement);
     this.drawFx(ctx, truth && ctx.layers.engagement);
@@ -1037,6 +1044,21 @@ export class EngagementView implements ScaleView {
     this.markLines.commit();
   }
 
+  /** Projected courses of the theater's fleets: dotted path, turnover, arrival and uncertainty cone. */
+  private drawCourses(ctx: ViewContext, on: boolean, labels: LabelSpec[], width: number, height: number): void {
+    const { frame } = ctx;
+    this.courseLines.begin();
+    if (on) {
+      const list = this.courses.at(frame.t, ctx.theater, (u) => u.theater === ctx.theater && frame.unitCount[u.idx] > 0);
+      for (const { unit, plot } of list) {
+        if (!this.fleets.get(unit.idx)?.live) continue;
+        const hex = this.sideRgb.get(unit.side) ?? PALETTE.ink;
+        this.courseLines.draw(unit.id, plot, { rgb: rgbOf(hex, 0.85), ink: inkOf(hex, unit.side === ctx.focusSide, 0.9) }, (km) => this.origin.point(km, new THREE.Vector3()), this.camera, width, height, labels);
+      }
+    }
+    this.courseLines.commit();
+  }
+
   /**
    * Site A's LAC wings (A report §4.4): every LAC a small disc, in squadrons of twelve spread across the threat axis, the
    * wing drawn FORMATION_SCALE times life size like the fleets. Losses thin the squadrons; the wing keeps its size.
@@ -1604,7 +1626,7 @@ export class EngagementView implements ScaleView {
   status(): ViewStatus {
     return {
       samplingText: this.sampling,
-      scaleNote: 'Range rings centre on my side\'s fleet nearest the camera, or on the unit the camera follows, and are to scale; the hyper limits and resonance zone are the pack\'s. Class glyphs have bounded CSS-pixel sizes [S]. Every formation is drawn four times life size about its true centre at every zoom, so fleets keep one size and compare with each other [S]; centres, headings and counts are unchanged. Every LAC is a dot in a squadron of 12 on its wing\'s disc, also four times life size, and losses flash as they happen [S]. Each streak is one sampled missile: it leaves a ship or LAC of its group, flies its packet\'s solved path and comes down on a ship of the target fleet [S]; crowded views draw a share of the sample. Seven-second trails, launch cues and kill flashes are display aids [S]; beam timing is unchanged. Wedges, ranges and uncertainty are to scale.',
+      scaleNote: 'Range rings centre on my side\'s fleet nearest the camera, or on the unit the camera follows, and are to scale; the hyper limits and resonance zone are the pack\'s. Class glyphs have bounded CSS-pixel sizes [S]. Every formation is drawn four times life size about its true centre at every zoom, so fleets keep one size and compare with each other [S]; centres, headings and counts are unchanged. Every LAC is a dot in a squadron of 12 on its wing\'s disc, also four times life size, and losses flash as they happen [S]. Each streak is one sampled missile: it leaves a ship or LAC of its group, flies its packet\'s solved path and comes down on a ship of the target fleet [S]; crowded views draw a share of the sample. Seven-second trails, launch cues and kill flashes are display aids [S]; beam timing is unchanged. Projected courses are CIC estimates from each fleet\'s present velocity and thrust and the stars\' gravity, never the replay\'s future; thrust pointing within 8 degrees of a body or fleet reads as heading for it, braking to meet it [S]. Wedges, ranges and uncertainty are to scale.',
       notice: this.notice,
     };
   }
@@ -1615,7 +1637,7 @@ export class EngagementView implements ScaleView {
       fx: this.glows.drawn + this.beamBatch.drawn, wedges: this.wedgeCount, links: this.links.drawn,
       trails: this.streaks.count > 0 ? this.streaks.drawn() : 0,
       rings: this.ringLabels, boundaries: this.plane.shownSpheres + this.plane.shownCones, fleetRings: this.fleetRings,
-      bodies: this.bodyLayer.drawn,
+      bodies: this.bodyLayer.drawn, courses: this.courseLines.drawn,
     };
   }
 

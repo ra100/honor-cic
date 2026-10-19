@@ -8,18 +8,21 @@ import type { KinSegment } from './types';
 /** Seconds between direction refreshes for toward/away maneuvers. */
 export const STEP_S = 60;
 
-export function segmentState(segs: KinSegment[], t: number, outP: Vec3 = [0, 0, 0], outV: Vec3 = [0, 0, 0]): { p: Vec3; v: Vec3 } {
+/** The segment in force at t; the first or last one outside the track. */
+export function segmentAt(segs: KinSegment[], t: number): KinSegment {
   let lo = 0;
   let hi = segs.length - 1;
-  if (t >= segs[hi].t0) lo = hi;
-  else {
-    while (lo < hi) {
-      const mid = (lo + hi + 1) >> 1;
-      if (segs[mid].t0 <= t) lo = mid;
-      else hi = mid - 1;
-    }
+  if (t >= segs[hi].t0) return segs[hi];
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (segs[mid].t0 <= t) lo = mid;
+    else hi = mid - 1;
   }
-  const s = segs[lo];
+  return segs[lo];
+}
+
+export function segmentState(segs: KinSegment[], t: number, outP: Vec3 = [0, 0, 0], outV: Vec3 = [0, 0, 0]): { p: Vec3; v: Vec3 } {
+  const s = segmentAt(segs, t);
   const dt = t - s.t0;
   for (let i = 0; i < 3; i++) {
     outV[i] = s.v0[i] + s.a[i] * dt;

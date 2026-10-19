@@ -35,3 +35,10 @@ export function rgbOf(color: number, k: number): [number, number, number] {
     linearChannel((color & 255) / 255) * gain,
   ];
 }
+
+/** Callout ink from the side colour; other sides are lifted toward white for legibility, as DESIGN's hostile ink is. */
+export function inkOf(hex: number, ally: boolean, alpha: number): string {
+  const k = ally ? 0 : 0.3;
+  const ch = (shift: number) => Math.round(((hex >> shift) & 255) + (255 - ((hex >> shift) & 255)) * k);
+  return `rgba(${ch(16)}, ${ch(8)}, ${ch(0)}, ${alpha})`;
+}

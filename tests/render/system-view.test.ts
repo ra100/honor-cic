@@ -38,6 +38,16 @@ describe('SystemView', () => {
     expect(v.pick(0, 0)).toBeNull();
   });
 
+  it('projects fleet courses with the courses layer on', () => {
+    const v = new SystemView(pack, replay, null);
+    v.update(ctx(0));
+    expect(v.courseCount()).toBeGreaterThan(0);
+    const c = ctx(0);
+    c.layers.courses = false;
+    v.update(c);
+    expect(v.courseCount()).toBe(0);
+  });
+
   it('hides the celestial layer when it is switched off', () => {
     const v = new SystemView(pack, replay, null);
     const c = ctx(0);

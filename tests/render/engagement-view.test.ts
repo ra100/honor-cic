@@ -56,6 +56,18 @@ describe('EngagementView', () => {
     expect(Array.from(v.debugPositions())).toEqual(before);
   });
 
+  it('projects the courses of moving fleets only with the courses layer on, and never in the perceived picture', () => {
+    const v = new EngagementView(pack, replay, null);
+    v.update(ctx(0));
+    expect(v.drawCounts().courses).toBeGreaterThan(0);
+    const off = ctx(0);
+    off.layers.courses = false;
+    v.update(off);
+    expect(v.drawCounts().courses).toBe(0);
+    v.update(ctx(0, { perceived: { enabled: true, side: 'alliance' } }));
+    expect(v.drawCounts().courses).toBe(0);
+  });
+
   it('draws wedges and sidewalls only with the protection layer on', () => {
     const v = new EngagementView(pack, replay, null);
     v.update(ctx(0));

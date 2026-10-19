@@ -9,10 +9,11 @@ import { orientationAt } from '../../core/solver/geometry';
 import { bodyPosition, exclusionsAt, indexBodies, orbitPolyline, type ConeExclusion } from '../../core/solver/orbits';
 import { fmtCount, fmtDuration, LM_KM } from '../../core/units';
 import { dist, type Vec3 } from '../../core/vec';
+import { CourseLayer, FleetCourses } from '../courses';
 import { applyPlotInsets, plotDistanceScale, plotSize, safePlotRect, type PlotRect } from '../framing';
 import type { LabelSpec } from '../labels';
 import { FloatingOrigin } from '../origin';
-import { PALETTE, rgbOf, sideColor } from '../palette';
+import { inkOf, PALETTE, rgbOf, sideColor } from '../palette';
 import {
   barycentre, fleetShortName, limitText, lmText, LOOK_COLORS, LOOK_MARK, LOOK_MIN_PX, LOOK_RADIUS_KM, planetLook, planetSubtitle,
   resonanceLabel, solarMasses, stableHash, starSubtitle, systemCatalog, terminusSubtitle, type PlanetLook, type SystemCatalog,
@@ -48,13 +49,6 @@ interface PlanetRig {
 interface ConeRig { e: ConeExclusion; mesh: THREE.Mesh<THREE.ConeGeometry, THREE.ShaderMaterial>; rim: THREE.Line; label: { text: string; sub: string } | null }
 interface CalloutReq { spec: LabelSpec; anchor: THREE.Vector3; width: number }
 
-/** Callout ink from the side colour; other sides are lifted toward white for legibility, as DESIGN's hostile ink is. */
-function inkOf(hex: number, ally: boolean, alpha: number): string {
-  const k = ally ? 0 : 0.3;
-  const ch = (shift: number) => Math.round(((hex >> shift) & 255) + (255 - ((hex >> shift) & 255)) * k);
-  return `rgba(${ch(16)}, ${ch(8)}, ${ch(0)}, ${alpha})`;
-}
-
 /** Star tint from mass: Site A's G0 V white for the heavier primary, its warmer companion tint below a solar mass. */
 function starTint(b: CelestialBody): [number, number, number] {
   const m = solarMasses(b);
@@ -81,6 +75,8 @@ export class SystemView implements ScaleView {
   private markers: THREE.Points | null = null;
   private markerBodies: CelestialBody[] = [];
   private readonly glyphs = new GlyphCloud(8192);
+  private readonly courseLines = new CourseLayer(32_768, KM_PER_UNIT);
+  private readonly courses: FleetCourses;
   /** Ship index and render-space position of every drawn hull glyph, for picking. */
   private readonly glyphShip = new Int32Array(8192);
   private readonly glyphPos = new Float32Array(8192 * 3);
@@ -107,7 +103,8 @@ export class SystemView implements ScaleView {
     this.index = indexBodies(pack.bodies);
     this.cat = systemCatalog(pack);
     this.camera.up.set(0, 0, 1);
-    this.scene.add(this.celestial, this.glyphs.points);
+    this.courses = new FleetCourses(pack.bodies, replay);
+    this.scene.add(this.celestial, this.glyphs.points, this.courseLines.lines.lines);
     this.controls = dom ? new OrbitControls(this.camera, dom) : null;
     if (this.controls) {
       this.controls.enableDamping = true;
@@ -397,6 +394,7 @@ export class SystemView implements ScaleView {
     if (ctx.layers.truth && !ctx.perceived.enabled) this.drawFleets(ctx, callouts);
     if (ctx.perceived.enabled || ctx.layers.commander) this.drawContacts(ctx, callouts);
     this.glyphs.commit();
+    this.drawCourses(ctx, ctx.layers.truth && !ctx.perceived.enabled && ctx.layers.courses, specs, width, height);
     this.busy = this.layoutCallouts(callouts, width, height, ctx, specs);
 
     for (const s of this.stars) {
@@ -586,6 +584,23 @@ export class SystemView implements ScaleView {
     }
   }
 
+  /** Projected courses of every fleet under way: dotted path, turnover, arrival and uncertainty cone. */
+  private drawCourses(ctx: ViewContext, on: boolean, specs: LabelSpec[], width: number, height: number): void {
+    this.courseLines.begin();
+    if (on) {
+      for (const { unit, plot } of this.courses.at(ctx.frame.t, 'all', (u) => ctx.frame.unitCount[u.idx] > 0)) {
+        this.courseLines.draw(unit.id, plot, { rgb: rgbOf(sideColor(this.replay, unit.side), 0.85), ink: inkOf(sideColor(this.replay, unit.side), unit.side === ctx.focusSide, 0.9) },
+          (km) => this.u(km), this.camera, width, height, specs);
+      }
+    }
+    this.courseLines.commit();
+  }
+
+  /** Projected courses drawn this frame. */
+  courseCount(): number {
+    return this.courseLines.drawn;
+  }
+
   private fleetSpec(u: UnitTrack, ally: boolean, present: boolean, ctx: ViewContext): LabelSpec {
     const n = present ? ctx.frame.unitCount[u.idx] : u.shipIdx.length;
     const def = this.pack.units.find((x) => x.id === u.id);
@@ -731,7 +746,7 @@ export class SystemView implements ScaleView {
   }
 
   status(): ViewStatus {
-    return { samplingText: null, scaleNote: 'Stars, planets and ship symbols are enlarged to stay visible. Orbits, hyper limits and the resonance zone are to scale.', notice: this.notice };
+    return { samplingText: null, scaleNote: 'Stars, planets and ship symbols are enlarged to stay visible. Orbits, hyper limits and the resonance zone are to scale. Projected courses are CIC estimates from each fleet\'s present velocity, thrust and the stars\' gravity [S].', notice: this.notice };
   }
 
   dispose(): void {
