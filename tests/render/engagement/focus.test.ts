@@ -39,11 +39,28 @@ describe('range rings on my fleet (Site A §4.1)', () => {
     expect(close.step).toBe(25_000);
     expect(close.labels[0].text).toBe('50,000 km');
     expect(close.labels.length).toBeLessThanOrEqual(8);
-    expect(close.radius).toBeLessThanOrEqual(40 * close.step);
+    expect(close.radius).toBeLessThanOrEqual(40 * Math.max(close.step, close.next));
     expect(ringPlan([0, 0, 0], 0, enemy, 15_000_000).step).toBe(1_000_000);
     expect(ringPlan([0, 0, 0], 0, [33_000_000, 0, 0], 3e8).step).toBe(10_000_000);
     expect(ringPlan([0, 0, 0], 0, [33_000_000, 0, 0], 1e12).step).toBe(10_000_000);
     expect(ringPlan([0, 0, 0], null, null, 1e6).step).toBe(50_000);
+  });
+
+  it('changes the ring size smoothly as the enemy closes, never snapping to half or double', () => {
+    // Sirius closing on Fearless at 3,392 km/s, seen from 1.2 Mkm: three step switches between 500,000 and 60,000 km.
+    let prev = ringPlan([0, 0, 0], 0, [500_000, 0, 0], 1.2e6);
+    for (let km = 499_000; km >= 60_000; km -= 1_000) {
+      const plan = ringPlan([0, 0, 0], 0, [km, 0, 0], 1.2e6);
+      expect(plan.radius / prev.radius).toBeGreaterThan(0.9);
+      expect(plan.radius / prev.radius).toBeLessThan(1.1);
+      if (plan.step !== prev.step) {
+        // At a switch the two spacings swap roles at equal weight, so the drawn picture is the same on both sides.
+        expect(plan.mix).toBeGreaterThan(0.45);
+        expect(prev.mix).toBeGreaterThan(0.45);
+        expect([plan.step, plan.next].sort()).toEqual([prev.step, prev.next].sort());
+      }
+      prev = plan;
+    }
   });
 
   it('picks nice steps and formats them as Site A does', () => {

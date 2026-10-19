@@ -35,6 +35,8 @@ const FRAG = /* glsl */ `
 uniform float uHalf;
 uniform float uR;
 uniform float uRing;
+uniform float uRing2;
+uniform float uMix;
 uniform float uFade;
 uniform float uBFade;
 uniform vec2 uBear;
@@ -61,10 +63,16 @@ void main() {
   float graze = smoothstep(0.03, 0.14, abs(dot(normalize(-vView), vNrm)));
   if (r < uR && uFade > 0.0) {
     // Site A GRID_FS: minor rings, majors on every second ring, 24 spokes; one spoke lies on the bearing to the enemy.
+    // Next to a switch between spacings both sets are drawn, crossfaded by uMix, so the grid never snaps.
     float dR = abs(fract(r / uRing + 0.5) - 0.5) * uRing;
-    float ring = 1.0 - smoothstep(0.0, w * 1.3, dR);
     float dM = abs(fract(r / (uRing * 2.0) + 0.5) - 0.5) * uRing * 2.0;
-    float major = 1.0 - smoothstep(0.0, w * 1.6, dM);
+    float dR2 = abs(fract(r / uRing2 + 0.5) - 0.5) * uRing2;
+    float dM2 = abs(fract(r / (uRing2 * 2.0) + 0.5) - 0.5) * uRing2 * 2.0;
+    float minor1 = (1.0 - smoothstep(0.0, w * 1.3, dR)) * 0.32 + (1.0 - smoothstep(0.0, w * 1.6, dM)) * 0.55;
+    float minor2 = (1.0 - smoothstep(0.0, w * 1.3, dR2)) * 0.32 + (1.0 - smoothstep(0.0, w * 1.6, dM2)) * 0.55;
+    float moire1 = 1.0 - smoothstep(0.22, 0.5, w / uRing);
+    float moire2 = 1.0 - smoothstep(0.22, 0.5, w / uRing2);
+    float rings = mix(minor1 * moire1, minor2 * moire2, uMix);
     mat2 toQ = mat2(uBear.x, -uBear.y, uBear.y, uBear.x);
     vec2 q = toQ * vP;
     float th = atan(q.y, q.x), st = 3.14159265 / 12.0;
@@ -75,8 +83,7 @@ void main() {
     float sw = max(length(vec2(dot(toQ * dFdx(vP), sn), dot(toQ * dFdy(vP), sn))), 1e-6);
     float spoke = (1.0 - smoothstep(0.0, sw * 1.2, sd)) * smoothstep(uRing * 0.3, uRing, r) * step(0.0, dot(q, vec2(cos(ang), sin(ang))));
     float fade = 1.0 - smoothstep(uR * 0.6, uR, r);
-    float moire = 1.0 - smoothstep(0.22, 0.5, w / uRing);
-    c += uCol * ((ring * 0.32 + major * 0.55) * moire + spoke * 0.22) * fade * graze * uFade * 0.3;
+    c += uCol * (rings + spoke * 0.22) * fade * graze * uFade * 0.3;
   }
   float bf = uBFade * (1.0 - smoothstep(uHalf * 0.55, uHalf * 0.95, r));
   if (bf > 0.0) {
@@ -239,7 +246,7 @@ export class TacticalPlane {
     this.material = new THREE.ShaderMaterial({
       vertexShader: VERT, fragmentShader: FRAG,
       uniforms: {
-        uHalf: { value: 1 }, uR: { value: 1 }, uRing: { value: 1 }, uFade: { value: 0 }, uBFade: { value: 0 },
+        uHalf: { value: 1 }, uR: { value: 1 }, uRing: { value: 1 }, uRing2: { value: 1 }, uMix: { value: 0 }, uFade: { value: 0 }, uBFade: { value: 0 },
         uBear: { value: new THREE.Vector2(1, 0) }, uCol: { value: GRID_RGB.clone() },
         uLimitCol: { value: LIMIT_RGB.clone() }, uZoneCol: { value: ZONE_RGB.clone() },
         uNH: { value: 0 }, uHyper: { value: Array.from({ length: MAX_SPHERES }, () => new THREE.Vector4()) },
@@ -274,6 +281,8 @@ export class TacticalPlane {
     u.uHalf.value = reach / kmPerUnit;
     u.uR.value = plan.radius / kmPerUnit;
     u.uRing.value = plan.step / kmPerUnit;
+    u.uRing2.value = plan.next / kmPerUnit;
+    u.uMix.value = plan.mix;
     u.uFade.value = fade;
     u.uBFade.value = boundaryFade;
     (u.uBear.value as THREE.Vector2).set(plan.bearing[0], plan.bearing[1]).normalize();
